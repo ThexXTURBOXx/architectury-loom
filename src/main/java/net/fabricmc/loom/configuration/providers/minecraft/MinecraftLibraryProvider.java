@@ -42,7 +42,7 @@ public class MinecraftLibraryProvider {
 
 		for (MinecraftVersionMeta.Library library : versionInfo.libraries()) {
 			if (library.isValidForOS() && !library.hasNatives() && library.artifact() != null) {
-				project.getDependencies().add(Constants.Configurations.MINECRAFT_DEPENDENCIES, project.getDependencies().module(library.name()));
+				project.getDependencies().add(Constants.Configurations.MINECRAFT_DEPENDENCIES, library.name());
 			}
 		}
 	}

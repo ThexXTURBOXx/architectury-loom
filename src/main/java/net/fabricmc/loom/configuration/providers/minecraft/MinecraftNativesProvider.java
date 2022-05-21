@@ -112,10 +112,6 @@ public class MinecraftNativesProvider {
 	private boolean requiresExtract() {
 		List<MinecraftVersionMeta.Download> natives = getNatives();
 
-		if (natives.isEmpty()) {
-			throw new IllegalStateException("No natives found for the current system");
-		}
-
 		for (MinecraftVersionMeta.Download library : natives) {
 			File libJarFile = library.relativeFile(jarStore);
 			File libSha1File = new File(nativesDir, libJarFile.getName() + ".sha1");
