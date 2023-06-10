@@ -25,12 +25,15 @@
 package net.fabricmc.loom.configuration.providers.forge.mcpconfig;
 
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Objects;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyInfo;
@@ -52,6 +55,34 @@ public class McpConfigProvider extends DependencyProvider {
 	@Override
 	public void provide(DependencyInfo dependency) throws Exception {
 		init(dependency.getDependency().getVersion());
+
+		if (getExtension().isLegacyForge()) {
+			String json = """
+{
+  "data": {
+    "mappings": "TODO mappings"
+  },
+  "steps": {
+    "joined": [
+      {
+        "type": "downloadClient"
+      },
+      {
+        "type": "downloadServer"
+      },
+      {
+        "name": "rename",
+        "type": "downloadManifest"
+      }
+    ]
+  },
+  "functions": {}
+}
+					""";
+
+			data = McpConfigData.fromJson(new Gson().fromJson(json, JsonObject.class));
+			return;
+		}
 
 		Path mcpZip = dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve MCPConfig")).toPath();
 

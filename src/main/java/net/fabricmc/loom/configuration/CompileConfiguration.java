@@ -198,6 +198,10 @@ public abstract class CompileConfiguration implements Runnable {
 		// but before MinecraftPatchedProvider.provide.
 		setupDependencyProviders(project, extension);
 
+		if (extension.isLegacyForge()) {
+			extension.noIntermediateMappings();
+		}
+
 		final DependencyInfo mappingsDep = DependencyInfo.create(getProject(), Configurations.MAPPINGS);
 		final MappingConfiguration mappingConfiguration = MappingConfiguration.create(getProject(), configContext.serviceManager(), mappingsDep, minecraftProvider);
 		extension.setMappingConfiguration(mappingConfiguration);
@@ -363,9 +367,9 @@ public abstract class CompileConfiguration implements Runnable {
 		}
 
 		if (extension.isForge()) {
+			dependencyProviders.addProvider(new ForgeUniversalProvider(project));
 			dependencyProviders.addProvider(new McpConfigProvider(project));
 			dependencyProviders.addProvider(new PatchProvider(project));
-			dependencyProviders.addProvider(new ForgeUniversalProvider(project));
 		}
 
 		dependencyProviders.handleDependencies(project);

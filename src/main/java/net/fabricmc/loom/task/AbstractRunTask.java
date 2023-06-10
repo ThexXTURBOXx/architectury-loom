@@ -60,7 +60,7 @@ public abstract class AbstractRunTask extends JavaExec {
 		args(config.programArgs);
 		getMainClass().set(config.mainClass);
 
-		getJvmArguments().addAll(getProject().provider(this::getGameJvmArgs));
+		// getJvmArguments().addAll(getProject().provider(this::getGameJvmArgs));
 	}
 
 	private boolean canUseArgFile() {

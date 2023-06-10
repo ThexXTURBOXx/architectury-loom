@@ -151,6 +151,14 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 		return isForge() && !getMcpConfigProvider().isOfficial();
 	}
 
+	default boolean isLegacyForge() {
+		return isForge() && getForgeUserdevProvider().isLegacyForge();
+	}
+
+	default boolean isModernForge() {
+		return isForge() && !isLegacyForge();
+	}
+
 	DependencyProviders getDependencyProviders();
 
 	void setDependencyProviders(DependencyProviders dependencyProviders);

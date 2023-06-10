@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -74,13 +75,15 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 					.property("client", "org.lwjgl.librarypath", nativesPath);
 		}
 
-		if (!getExtension().isForge()) {
+		if (!getExtension().isModernForge()) {
 			launchConfig
 					.argument("client", "--assetIndex")
 					.argument("client", getExtension().getMinecraftProvider().getVersionInfo().assetIndex().fabricId(getExtension().getMinecraftProvider().minecraftVersion()))
 					.argument("client", "--assetsDir")
 					.argument("client", assetsDirectory.getAbsolutePath());
+		}
 
+		if (!getExtension().isForge()) {
 			if (getExtension().areEnvironmentSourceSetsSplit()) {
 				launchConfig.property("client", "fabric.gameJarPath.client", getGameJarPath("client"));
 				launchConfig.property("fabric.gameJarPath", getGameJarPath("common"));
@@ -97,7 +100,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 					.argument("client", "Architectury Loom");
 		}
 
-		if (getExtension().isForge()) {
+		if (getExtension().isModernForge()) {
 			// Find the mapping files for Unprotect to use for figuring out
 			// which classes are from Minecraft.
 			String unprotectMappings = getProject().getConfigurations()
@@ -154,6 +157,24 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 			}
 		}
 
+		if (getExtension().isLegacyForge()) {
+			launchConfig
+					.argument("client", "--tweakClass")
+					.argument("client", Constants.LegacyForge.FML_TWEAKER)
+					.argument("server", "--tweakClass")
+					.argument("server", Constants.LegacyForge.FML_SERVER_TWEAKER)
+
+					.argument("--accessToken")
+					.argument("undefined")
+
+					.property("net.minecraftforge.gradle.GradleStart.srg.srg-mcp", getExtension().getMappingConfiguration().srgToNamedSrg.toAbsolutePath().toString())
+					.property("mixin.env.remapRefMap", "true");
+
+			for (String config : PropertyUtil.getAndFinalize(getExtension().getForge().getMixinConfigs())) {
+				launchConfig.argument("--mixin").argument(config);
+			}
+		}
+
 		final boolean plainConsole = getProject().getGradle().getStartParameter().getConsoleOutput() == ConsoleOutput.Plain;
 		final boolean ansiSupportedIDE = new File(getProject().getRootDir(), ".vscode").exists()
 				|| new File(getProject().getRootDir(), ".idea").exists()
@@ -197,7 +218,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 	}
 
 	public static class LaunchConfig {
-		private final Map<String, List<String>> values = new HashMap<>();
+		private final Map<String, List<String>> values = new LinkedHashMap<>();
 
 		public LaunchConfig property(String key, String value) {
 			return property("common", key, value);
