@@ -27,7 +27,7 @@ package net.fabricmc.loom.util;
 import org.objectweb.asm.Opcodes;
 
 public class Constants {
-	public static final String PLUGIN_ID = "dev.architectury.loom";
+	public static final String PLUGIN_ID = "gg.essential.loom";
 	public static final String LIBRARIES_BASE = "https://libraries.minecraft.net/";
 	public static final String RESOURCES_BASE = "https://resources.download.minecraft.net/";
 	public static final String VERSION_MANIFESTS = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";

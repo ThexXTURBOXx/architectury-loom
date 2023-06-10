@@ -23,7 +23,7 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 	}
 }
 
-group = "dev.architectury"
+group = "gg.essential"
 archivesBaseName = project.name
 def baseVersion = '1.2'
 
@@ -211,7 +211,7 @@ codenarc {
 gradlePlugin {
 	plugins {
 		fabricLoom {
-			id = 'dev.architectury.loom'
+			id = 'gg.essential.loom'
 			implementationClass = 'net.fabricmc.loom.bootstrap.LoomGradlePluginBootstrap'
 		}
 	}
@@ -269,8 +269,8 @@ publishing {
 
 		// Manually crate the plugin marker for snapshot versions
 		snapshotPlugin(MavenPublication) {
-			groupId 'dev.architectury.loom'
-			artifactId 'dev.architectury.loom.gradle.plugin'
+			groupId 'gg.essential.loom'
+			artifactId 'gg.essential.loom.gradle.plugin'
 			version baseVersion + '-SNAPSHOT'
 
 			pom.withXml {
@@ -290,12 +290,13 @@ publishing {
 	}
 
 	repositories {
-		if (ENV.MAVEN_PASS != null) {
+		if (project.hasProperty("nexus_user")) {
 			maven {
-				url = "https://deploy.shedaniel.me/"
+				url = "https://repo.sk1er.club/repository/maven-releases/"
+				name = "nexus-public"
 				credentials {
-					username = "shedaniel"
-					password = ENV.MAVEN_PASS
+					username = project.property("nexus_user").toString()
+					password = project.property("nexus_password").toString()
 				}
 			}
 		}
