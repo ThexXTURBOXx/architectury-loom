@@ -113,11 +113,23 @@ public class ForgeSourcesRemapper {
 
 	public static void provideForgeSources(Project project, SharedServiceManager serviceManager, BiConsumer<String, byte[]> consumer) throws IOException {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
-		String sourceDependency = extension.getForgeUserdevProvider().getJson().getAsJsonPrimitive("sources").getAsString();
 		List<Path> forgeInstallerSources = new ArrayList<>();
+		Path legacySourcesZip = null;
 
-		for (File file : DependencyDownloader.download(project, sourceDependency)) {
-			forgeInstallerSources.add(file.toPath());
+		if (extension.isModernForge()) {
+			String sourceDependency = extension.getForgeUserdevProvider().getJson().getAsJsonPrimitive("sources").getAsString();
+
+			for (File file : DependencyDownloader.download(project, sourceDependency)) {
+				forgeInstallerSources.add(file.toPath());
+			}
+		} else {
+			Path userdevJar = extension.getForgeUserdevProvider().getUserdevJar().toPath();
+			byte[] sourcesZip = ZipUtils.unpack(userdevJar, "sources.zip");
+
+			legacySourcesZip = Files.createTempFile("sources", ".zip");
+			legacySourcesZip.toFile().deleteOnExit();
+			Files.write(legacySourcesZip, sourcesZip, StandardOpenOption.TRUNCATE_EXISTING);
+			forgeInstallerSources.add(legacySourcesZip);
 		}
 
 		project.getLogger().lifecycle(":found {} forge source jars", forgeInstallerSources.size());
@@ -125,6 +137,10 @@ public class ForgeSourcesRemapper {
 		project.getLogger().lifecycle(":extracted {} forge source classes", forgeSources.size());
 		remapSources(project, serviceManager, forgeSources);
 		forgeSources.forEach(consumer);
+
+		if (legacySourcesZip != null) {
+			Files.delete(legacySourcesZip);
+		}
 	}
 
 	private static void remapSources(Project project, SharedServiceManager serviceManager, Map<String, byte[]> sources) throws IOException {
