@@ -95,38 +95,6 @@ public final class IntermediateMappingsService implements SharedService {
 		return new IntermediateMappingsService(intermediaryTiny);
 	}
 
-	private void generateDummyIntermediary(MinecraftProvider minecraftProvider, Path tinyV2) throws IOException {
-		Stopwatch stopwatch = Stopwatch.createStarted();
-		LOGGER.info(":generating dummy intermediary");
-
-		Path minecraftJar = minecraftProvider.getMinecraftClientJar().toPath(); // FIXME used to be merged jar
-
-		// create a temporary folder into which stitch will output the v1 file
-		// we cannot just create a temporary file directly, cause stitch will try to read it if it exists
-		Path tmpFolder = Files.createTempDirectory("dummy-intermediary");
-		Path tinyV1 = tmpFolder.resolve("intermediary-v1.tiny");
-
-		CommandGenerateIntermediary command = new CommandGenerateIntermediary();
-		LoggerFilter.withSystemOutAndErrSuppressed(() -> {
-			try {
-				command.run(new String[]{ minecraftJar.toAbsolutePath().toString(), tinyV1.toAbsolutePath().toString() });
-			} catch (IOException e) {
-				throw e;
-			} catch (Exception e) {
-				throw new IOException("Failed to generate intermediary", e);
-			}
-		});
-
-		try (MappingWriter writer = MappingWriter.create(tinyV2, MappingFormat.TINY_2)) {
-			MappingReader.read(tinyV1, writer);
-		}
-
-		Files.delete(tinyV1);
-		Files.delete(tmpFolder);
-
-		LOGGER.info(":generated dummy intermediary in " + stopwatch.stop());
-	}
-
 	private MemoryMappingTree createMemoryMappingTree() {
 		final MemoryMappingTree tree = new MemoryMappingTree();
 

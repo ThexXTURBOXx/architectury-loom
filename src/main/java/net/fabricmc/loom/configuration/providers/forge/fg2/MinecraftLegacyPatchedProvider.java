@@ -78,7 +78,7 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 	// Step 2: Merge (global)
 	private Path minecraftMergedPatchedJar;
 	// Step 4: Access Transform (global or project)
-	private Path minecraftMergedPatchedAtJar;
+	private Path minecraftPatchedAtJar;
 
 	private Path forgeJar;
 
@@ -103,7 +103,7 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 		minecraftClientPatchedJar = forgeWorkingDir.resolve("client-patched.jar");
 		minecraftServerPatchedJar = forgeWorkingDir.resolve("server-patched.jar");
 		minecraftMergedPatchedJar = forgeWorkingDir.resolve("merged-patched.jar");
-		minecraftMergedPatchedAtJar = forgeWorkingDir.resolve(type.id + "-at-patched.jar");
+		minecraftPatchedAtJar = forgeWorkingDir.resolve(type.id + "-at-patched.jar");
 		forgeJar = forgeWorkingDir.resolve("forge.jar");
 
 		checkCache();
@@ -122,14 +122,14 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 				minecraftClientPatchedJar,
 				minecraftServerPatchedJar,
 				minecraftMergedPatchedJar,
-				minecraftMergedPatchedAtJar,
+				minecraftPatchedAtJar,
 				forgeJar,
 		};
 	}
 
 	protected void checkCache() throws IOException {
 		if (getExtension().refreshDeps() || Stream.of(getGlobalCaches()).anyMatch(Files::notExists)
-				|| !isPatchedJarUpToDate(minecraftMergedPatchedAtJar) || !isPatchedJarUpToDate(forgeJar)) {
+				|| !isPatchedJarUpToDate(minecraftPatchedAtJar) || !isPatchedJarUpToDate(forgeJar)) {
 			cleanAllCache();
 		}
 	}
@@ -156,15 +156,16 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 			mergeJars();
 		}
 
-		if (dirty || Files.notExists(minecraftMergedPatchedAtJar)) {
+		if (dirty || Files.notExists(minecraftPatchedAtJar)) {
 			dirty = true;
 			Path minecraftPatchedJar = switch (type) {
 			case CLIENT_ONLY -> minecraftClientPatchedJar;
 			case SERVER_ONLY -> minecraftServerPatchedJar;
 			case MERGED -> minecraftMergedPatchedJar;
 			};
-			accessTransform(project, minecraftPatchedJar, minecraftMergedPatchedAtJar);
-			applyLoomPatchVersion(minecraftMergedPatchedAtJar);
+			accessTransform(project, minecraftPatchedJar, minecraftPatchedAtJar);
+			walkFileSystems(forgeJar, minecraftPatchedAtJar, (path) -> true, this::copyReplacing);
+			applyLoomPatchVersion(minecraftPatchedAtJar);
 		}
 	}
 
@@ -308,7 +309,7 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 
 	@Override
 	public Path getMinecraftPatchedJar() {
-		return minecraftMergedPatchedAtJar;
+		return minecraftPatchedAtJar;
 	}
 
 	/**

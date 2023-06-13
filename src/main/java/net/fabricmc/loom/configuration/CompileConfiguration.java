@@ -66,6 +66,7 @@ import net.fabricmc.loom.configuration.providers.forge.PatchProvider;
 import net.fabricmc.loom.configuration.providers.forge.SrgProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpConfigProvider;
 import net.fabricmc.loom.configuration.providers.forge.minecraft.ForgeMinecraftProvider;
+import net.fabricmc.loom.configuration.providers.mappings.GeneratedIntermediateMappingsProvider;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftJarConfiguration;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
@@ -199,7 +200,9 @@ public abstract class CompileConfiguration implements Runnable {
 		setupDependencyProviders(project, extension);
 
 		if (extension.isLegacyForge()) {
-			extension.noIntermediateMappings();
+			extension.setIntermediateMappingsProvider(GeneratedIntermediateMappingsProvider.class, provider -> {
+				provider.minecraftProvider = minecraftProvider;
+			});
 		}
 
 		final DependencyInfo mappingsDep = DependencyInfo.create(getProject(), Configurations.MAPPINGS);
