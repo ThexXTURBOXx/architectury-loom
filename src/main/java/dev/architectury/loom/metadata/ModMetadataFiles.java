@@ -23,8 +23,8 @@ import net.fabricmc.loom.util.gradle.SourceSetHelper;
 public final class ModMetadataFiles {
 	private static final Logger LOGGER = Logging.getLogger(ModMetadataFiles.class);
 	private static final Map<String, Function<byte[], ModMetadataFile>> SINGLE_FILE_METADATA_TYPES = ImmutableMap.<String, Function<byte[], ModMetadataFile>>builder()
-			.put(ArchitecturyCommonJson.FILE_NAME, ArchitecturyCommonJson::of)
 			.put(QuiltModJson.FILE_NAME, QuiltModJson::of)
+			.put(ArchitecturyCommonJson.FILE_NAME, ArchitecturyCommonJson::of)
 			.put(ModsToml.FILE_PATH, onError(ModsToml::of, "Could not load mods.toml", () -> new ErroringModMetadataFile("mods.toml")))
 			.build();
 
@@ -33,7 +33,7 @@ public final class ModMetadataFiles {
 			try {
 				return fn.apply(a);
 			} catch (Exception e) {
-				LOGGER.warn(message, e);
+				LOGGER.info(message, e);
 				return onError.get();
 			}
 		};
