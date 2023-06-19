@@ -34,17 +34,11 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import com.google.common.base.Stopwatch;
 import com.google.common.base.Suppliers;
-
-import net.fabricmc.loom.util.LoggerFilter;
-import net.fabricmc.mappingio.MappingReader;
-import net.fabricmc.mappingio.MappingWriter;
-import net.fabricmc.mappingio.format.MappingFormat;
-import net.fabricmc.stitch.commands.CommandGenerateIntermediary;
-
 import org.gradle.api.Project;
 import org.jetbrains.annotations.VisibleForTesting;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.mappings.intermediate.IntermediateMappingsProvider;
@@ -55,9 +49,6 @@ import net.fabricmc.loom.util.service.SharedServiceManager;
 import net.fabricmc.mappingio.adapter.MappingNsCompleter;
 import net.fabricmc.mappingio.format.Tiny2Reader;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public final class IntermediateMappingsService implements SharedService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IntermediateMappingsService.class);

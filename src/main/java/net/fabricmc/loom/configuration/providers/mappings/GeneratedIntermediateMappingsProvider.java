@@ -38,9 +38,11 @@ public abstract class GeneratedIntermediateMappingsProvider extends Intermediate
 		Path tmpFolder = Files.createTempDirectory("dummy-intermediary");
 		Path tinyV1 = tmpFolder.resolve("intermediary-v1.tiny");
 		Path mergedJar = tmpFolder.resolve("merged.jar");
+
 		try {
 			File clientJar = minecraftProvider.getMinecraftClientJar();
 			File serverJar = minecraftProvider.getMinecraftServerJar();
+
 			try (var jarMerger = new MinecraftJarMerger(clientJar, serverJar, mergedJar.toFile())) {
 				jarMerger.enableSyntheticParamsOffset();
 				jarMerger.merge();

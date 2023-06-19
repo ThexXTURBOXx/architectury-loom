@@ -25,15 +25,12 @@
 package net.fabricmc.loom.configuration.providers.forge.mcpconfig;
 
 import java.io.Reader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Objects;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyInfo;
@@ -57,6 +54,7 @@ public class McpConfigProvider extends DependencyProvider {
 		init(dependency.getDependency().getVersion());
 
 		if (getExtension().isLegacyForge()) {
+			//CHECKSTYLE:OFF
 			String json = """
 {
   "data": {
@@ -79,6 +77,7 @@ public class McpConfigProvider extends DependencyProvider {
   "functions": {}
 }
 					""";
+			//CHECKSTYLE:ON
 
 			data = McpConfigData.fromJson(new Gson().fromJson(json, JsonObject.class));
 			return;
