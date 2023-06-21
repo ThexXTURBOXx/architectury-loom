@@ -64,10 +64,12 @@ import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.fmj.FabricModJsonFactory;
 
 public final class IncludedJarFactory {
+	private final Task task;
 	private final Project project;
 
-	public IncludedJarFactory(Project project) {
-		this.project = project;
+	public IncludedJarFactory(Task task) {
+		this.task = task;
+		this.project = task.getProject();
 	}
 
 	public Provider<ConfigurableFileCollection> getNestedJars(final Configuration configuration) {
@@ -173,8 +175,7 @@ public final class IncludedJarFactory {
 			return input;
 		}
 
-		LoomGradleExtension extension = LoomGradleExtension.get(project);
-		File tempDir = new File(extension.getFiles().getUserCache(), "temp/modprocessing");
+		File tempDir = new File(project.getBuildDir(), "temp/modprocessing-" + task.getName());
 
 		if (!tempDir.exists()) {
 			tempDir.mkdirs();
