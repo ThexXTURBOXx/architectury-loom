@@ -53,6 +53,36 @@ public class McpConfigProvider extends DependencyProvider {
 	public void provide(DependencyInfo dependency) throws Exception {
 		init(dependency.getDependency().getVersion());
 
+		if (getExtension().isLegacyForge()) {
+			//CHECKSTYLE:OFF
+			String json = """
+{
+  "data": {
+    "mappings": "TODO mappings"
+  },
+  "steps": {
+    "joined": [
+      {
+        "type": "downloadClient"
+      },
+      {
+        "type": "downloadServer"
+      },
+      {
+        "name": "rename",
+        "type": "downloadManifest"
+      }
+    ]
+  },
+  "functions": {}
+}
+					""";
+			//CHECKSTYLE:ON
+
+			data = McpConfigData.fromJson(new Gson().fromJson(json, JsonObject.class));
+			return;
+		}
+
 		Path mcpZip = dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve MCPConfig")).toPath();
 
 		if (!Files.exists(mcp) || !Files.exists(unpacked) || refreshDeps()) {

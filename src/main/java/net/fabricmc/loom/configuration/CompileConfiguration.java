@@ -66,6 +66,7 @@ import net.fabricmc.loom.configuration.providers.forge.PatchProvider;
 import net.fabricmc.loom.configuration.providers.forge.SrgProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpConfigProvider;
 import net.fabricmc.loom.configuration.providers.forge.minecraft.ForgeMinecraftProvider;
+import net.fabricmc.loom.configuration.providers.mappings.GeneratedIntermediateMappingsProvider;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftJarConfiguration;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
@@ -77,6 +78,7 @@ import net.fabricmc.loom.configuration.providers.minecraft.mapped.SrgMinecraftPr
 import net.fabricmc.loom.configuration.sources.ForgeSourcesRemapper;
 import net.fabricmc.loom.extension.MixinExtension;
 import net.fabricmc.loom.util.Checksum;
+import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.ExceptionUtil;
 import net.fabricmc.loom.util.gradle.GradleUtils;
 import net.fabricmc.loom.util.gradle.SourceSetHelper;
@@ -198,6 +200,19 @@ public abstract class CompileConfiguration implements Runnable {
 		// This needs to run after MinecraftProvider.initFiles and MinecraftLibraryProvider.provide
 		// but before MinecraftPatchedProvider.provide.
 		setupDependencyProviders(project, extension);
+
+		if (extension.isLegacyForge()) {
+			extension.setIntermediateMappingsProvider(GeneratedIntermediateMappingsProvider.class, provider -> {
+				provider.minecraftProvider = minecraftProvider;
+			});
+		}
+
+		if (extension.isModernForge()) {
+			// Add Forge dev-time dependencies
+			project.getDependencies().add(Constants.Configurations.FORGE_EXTRA, Constants.Dependencies.FORGE_RUNTIME + Constants.Dependencies.Versions.FORGE_RUNTIME);
+			project.getDependencies().add(Constants.Configurations.FORGE_EXTRA, Constants.Dependencies.UNPROTECT + Constants.Dependencies.Versions.UNPROTECT);
+			project.getDependencies().add(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, Constants.Dependencies.JAVAX_ANNOTATIONS + Constants.Dependencies.Versions.JAVAX_ANNOTATIONS);
+		}
 
 		final DependencyInfo mappingsDep = DependencyInfo.create(getProject(), Configurations.MAPPINGS);
 		final MappingConfiguration mappingConfiguration = MappingConfiguration.create(getProject(), configContext.serviceManager(), mappingsDep, minecraftProvider);
@@ -366,9 +381,9 @@ public abstract class CompileConfiguration implements Runnable {
 		}
 
 		if (extension.isForge()) {
+			dependencyProviders.addProvider(new ForgeUniversalProvider(project));
 			dependencyProviders.addProvider(new McpConfigProvider(project));
 			dependencyProviders.addProvider(new PatchProvider(project));
-			dependencyProviders.addProvider(new ForgeUniversalProvider(project));
 		}
 
 		dependencyProviders.handleDependencies(project);
