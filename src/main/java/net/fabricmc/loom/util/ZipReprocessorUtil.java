@@ -30,7 +30,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.nio.file.attribute.FileTime;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.GregorianCalendar;
@@ -174,7 +173,5 @@ public class ZipReprocessorUtil {
 
 	private static void setConstantFileTime(ZipEntry entry) {
 		entry.setTime(ZipReprocessorUtil.CONSTANT_TIME_FOR_ZIP_ENTRIES);
-		entry.setLastModifiedTime(FileTime.fromMillis(ZipReprocessorUtil.CONSTANT_TIME_FOR_ZIP_ENTRIES));
-		entry.setLastAccessTime(FileTime.fromMillis(ZipReprocessorUtil.CONSTANT_TIME_FOR_ZIP_ENTRIES));
 	}
 }
