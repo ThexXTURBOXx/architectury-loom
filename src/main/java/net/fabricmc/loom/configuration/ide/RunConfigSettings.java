@@ -36,13 +36,16 @@ import java.util.function.Function;
 
 import javax.inject.Inject;
 
+import org.gradle.api.Action;
 import org.gradle.api.Named;
+import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
 import org.jetbrains.annotations.ApiStatus;
 
 import net.fabricmc.loom.LoomGradleExtension;
+import net.fabricmc.loom.api.ModSettings;
 import net.fabricmc.loom.configuration.providers.forge.ForgeRunTemplate;
 import net.fabricmc.loom.configuration.providers.forge.ForgeRunsProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftSourceSets;
@@ -116,8 +119,11 @@ public class RunConfigSettings implements Named {
 
 	private final Project project;
 	private final LoomGradleExtension extension;
+
+	// Architectury
 	private final List<Runnable> evaluateLater = new ArrayList<>();
 	private boolean evaluated = false;
+	private final NamedDomainObjectContainer<ModSettings> mods;
 
 	@Inject
 	public RunConfigSettings(Project project, String name) {
@@ -130,6 +136,7 @@ public class RunConfigSettings implements Named {
 			Objects.requireNonNull(defaultMainClass, "Run config " + name + " must specify default main class");
 			return RunConfig.getMainClass(environment, extension, defaultMainClass);
 		}));
+		this.mods = project.getObjects().domainObjectContainer(ModSettings.class);
 
 		setSource(p -> {
 			final String sourceSetName = MinecraftSourceSets.get(p).getSourceSetForEnv(getEnvironment());
@@ -385,7 +392,7 @@ public class RunConfigSettings implements Named {
 			ForgeRunTemplate template = runsProvider.getTemplates().findByName(templateName);
 
 			if (template != null) {
-				template.applyTo(this, runsProvider);
+				template.applyTo(this, runsProvider.getResolver(this));
 			} else {
 				project.getLogger().warn("Could not find Forge run template with name '{}'", templateName);
 			}
@@ -421,5 +428,30 @@ public class RunConfigSettings implements Named {
 
 	public void setIdeConfigGenerated(boolean ideConfigGenerated) {
 		this.ideConfigGenerated = ideConfigGenerated;
+	}
+
+	/**
+	 * {@return a container of mod settings for this run configuration}
+	 *
+	 * <p>If non-empty, this container will override the
+	 * {@linkplain net.fabricmc.loom.api.LoomGradleExtensionAPI#getMods global container}
+	 * declared in the {@code loom} extension.
+	 *
+	 * <p>This method is currently only available on Forge.
+	 */
+	@ApiStatus.Experimental
+	public NamedDomainObjectContainer<ModSettings> getMods() {
+		ModPlatform.assertPlatform(project, ModPlatform.FORGE);
+		return mods;
+	}
+
+	/**
+	 * Configures the {@linkplain #getMods mods} of this run configuration.
+	 *
+	 * <p>This method is currently only available on Forge.
+	 */
+	@ApiStatus.Experimental
+	public void mods(Action<NamedDomainObjectContainer<ModSettings>> action) {
+		action.execute(getMods());
 	}
 }
