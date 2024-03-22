@@ -64,10 +64,12 @@ import net.fabricmc.loom.util.ZipReprocessorUtil;
 import net.fabricmc.loom.util.fmj.FabricModJsonFactory;
 
 public final class IncludedJarFactory {
+	private final Task task;
 	private final Project project;
 
-	public IncludedJarFactory(Project project) {
-		this.project = project;
+	public IncludedJarFactory(Task task) {
+		this.task = task;
+		this.project = task.getProject();
 	}
 
 	public Provider<ConfigurableFileCollection> getNestedJars(final Configuration configuration) {

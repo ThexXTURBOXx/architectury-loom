@@ -37,6 +37,8 @@ import java.util.function.Supplier;
 import com.google.common.base.Suppliers;
 import org.gradle.api.Project;
 import org.jetbrains.annotations.VisibleForTesting;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.mappings.intermediate.IntermediateMappingsProvider;
@@ -49,6 +51,7 @@ import net.fabricmc.mappingio.format.Tiny2Reader;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
 public final class IntermediateMappingsService implements SharedService {
+	private static final Logger LOGGER = LoggerFactory.getLogger(IntermediateMappingsService.class);
 	private final Path intermediaryTiny;
 	private final Supplier<MemoryMappingTree> memoryMappingTree = Suppliers.memoize(this::createMemoryMappingTree);
 
