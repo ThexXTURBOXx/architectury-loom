@@ -167,7 +167,7 @@ public final class FabricModJsonFactory {
 
 	public static boolean isModJar(Path input, ModPlatform platform) {
 		if (platform.isForgeLike()) {
-			return ZipUtils.contains(input, "META-INF/mods.toml");
+			return ZipUtils.contains(input, "META-INF/mods.toml") || ZipUtils.contains(input, "mcmod.info");
 		} else if (platform == ModPlatform.QUILT) {
 			return ZipUtils.contains(input, "quilt.mod.json") || isModJar(input, ModPlatform.FABRIC);
 		}
@@ -191,7 +191,7 @@ public final class FabricModJsonFactory {
 		}
 
 		if (platform.isForgeLike()) {
-			return Files.exists(fs.getPath("META-INF/mods.toml"));
+			return Files.exists(fs.getPath("META-INF/mods.toml")) || Files.exists(fs.getPath("mcmod.info"));
 		} else if (platform == ModPlatform.QUILT) {
 			return Files.exists(fs.getPath("quilt.mod.json")) || containsMod(fs, ModPlatform.FABRIC);
 		}

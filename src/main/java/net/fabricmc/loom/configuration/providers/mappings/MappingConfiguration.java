@@ -226,7 +226,10 @@ public class MappingConfiguration {
 			if (Files.notExists(tinyMappingsWithSrg) || extension.refreshDeps()) {
 				// Merge tiny mappings with srg
 				Stopwatch stopwatch = Stopwatch.createStarted();
-				ForgeMappingsMerger.ExtraMappings extraMappings = ForgeMappingsMerger.ExtraMappings.ofMojmapTsrg(getMojmapSrgFileIfPossible(project));
+				// FIXME why is this special case necessary?
+				ForgeMappingsMerger.ExtraMappings extraMappings = extension.isLegacyForge()
+						? null
+						: ForgeMappingsMerger.ExtraMappings.ofMojmapTsrg(getMojmapSrgFileIfPossible(project));
 
 				try (Tiny2FileWriter writer = new Tiny2FileWriter(Files.newBufferedWriter(tinyMappingsWithSrg), false)) {
 					ForgeMappingsMerger.mergeSrg(getRawSrgFile(project), tinyMappings, extraMappings, true).accept(writer);
@@ -261,7 +264,7 @@ public class MappingConfiguration {
 			if (Files.notExists(srgToNamedSrg) || extension.refreshDeps()) {
 				try (var serviceManager = new ScopedSharedServiceManager()) {
 					TinyMappingsService mappingsService = getMappingsService(serviceManager, MappingOption.WITH_SRG);
-					SrgNamedWriter.writeTo(project.getLogger(), srgToNamedSrg, mappingsService.getMappingTree(), "srg", "named");
+					SrgNamedWriter.writeTo(srgToNamedSrg, mappingsService.getMappingTree(), "srg", "named", extension.isLegacyForge());
 				}
 			}
 		}
@@ -369,6 +372,7 @@ public class MappingConfiguration {
 			project.getDependencies().add(provider.getTargetConfig(), "de.oceanlabs.mcp:mcp_config:" + extension.getMinecraftProvider().minecraftVersion());
 			Configuration configuration = project.getConfigurations().getByName(provider.getTargetConfig());
 			provider.provide(DependencyInfo.create(project, configuration.getDependencies().iterator().next(), configuration));
+			extension.getDependencyProviders().addProvider(provider);
 		}
 
 		Path srgPath = getRawSrgFile(project);
