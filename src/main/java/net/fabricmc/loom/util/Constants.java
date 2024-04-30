@@ -27,7 +27,7 @@ package net.fabricmc.loom.util;
 import org.objectweb.asm.Opcodes;
 
 public class Constants {
-	public static final String PLUGIN_ID = "dev.architectury.loom";
+	public static final String PLUGIN_ID = "gg.essential.loom";
 	public static final boolean PLUGIN_BETA = true;
 	public static final boolean PLUGIN_DEPRECATED = false;
 	public static final String LIBRARIES_BASE = "https://libraries.minecraft.net/";
@@ -188,5 +188,11 @@ public class Constants {
 
 		private Forge() {
 		}
+	}
+
+	public static final class LegacyForge {
+		public static final String LAUNCH_WRAPPER = "net.minecraft.launchwrapper.Launch";
+		public static final String FML_TWEAKER = "net.minecraftforge.fml.common.launcher.FMLTweaker";
+		public static final String FML_SERVER_TWEAKER = "net.minecraftforge.fml.common.launcher.FMLServerTweaker";
 	}
 }

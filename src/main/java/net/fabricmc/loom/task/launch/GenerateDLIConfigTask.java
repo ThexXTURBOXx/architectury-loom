@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,13 +76,15 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 					.property("client", "org.lwjgl.librarypath", nativesPath);
 		}
 
-		if (!getExtension().isForgeLike()) {
+		if (!getExtension().isForgeLike() || getExtension().isLegacyForge()) {
 			launchConfig
 					.argument("client", "--assetIndex")
 					.argument("client", getExtension().getMinecraftProvider().getVersionInfo().assetIndex().fabricId(getExtension().getMinecraftProvider().minecraftVersion()))
 					.argument("client", "--assetsDir")
 					.argument("client", assetsDirectory.getAbsolutePath());
+		}
 
+		if (!getExtension().isForgeLike()) {
 			if (getExtension().areEnvironmentSourceSetsSplit()) {
 				launchConfig.property("client", !quilt ? "fabric.gameJarPath.client" : "loader.gameJarPath.client", getGameJarPath("client"));
 				launchConfig.property(!quilt ? "fabric.gameJarPath" : "loader.gameJarPath", getGameJarPath("common"));
@@ -133,7 +135,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 
 				launchConfig.property("mixin.env.remapRefMap", "true");
 
-				if (PropertyUtil.getAndFinalize(getExtension().getForge().getUseCustomMixin())) {
+				if (getExtension().isModernForge() && PropertyUtil.getAndFinalize(getExtension().getForge().getUseCustomMixin())) {
 					// See mixin remapper service in forge-runtime
 					launchConfig
 							.property("architectury.mixinRemapper.sourceNamespace", intermediateNs)
@@ -146,7 +148,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 
 				if (!mixinConfigs.isEmpty()) {
 					for (String config : mixinConfigs) {
-						launchConfig.argument("-mixin.config");
+						launchConfig.argument(getExtension().isLegacyForge() ? "--mixin" : "-mixin.config");
 						launchConfig.argument(config);
 					}
 				}
@@ -210,7 +212,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 	}
 
 	public static class LaunchConfig {
-		private final Map<String, List<String>> values = new HashMap<>();
+		private final Map<String, List<String>> values = new LinkedHashMap<>();
 
 		public LaunchConfig property(String key, String value) {
 			return property("common", key, value);
