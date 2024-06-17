@@ -227,7 +227,7 @@ public class MappingConfiguration {
 				// Merge tiny mappings with srg
 				Stopwatch stopwatch = Stopwatch.createStarted();
 				// FIXME why is this special case necessary?
-				ForgeMappingsMerger.ExtraMappings extraMappings = extension.isLegacyForge()
+				ForgeMappingsMerger.ExtraMappings extraMappings = extension.getForgeSpec() <= 2
 						? null
 						: ForgeMappingsMerger.ExtraMappings.ofMojmapTsrg(getMojmapSrgFileIfPossible(project));
 
