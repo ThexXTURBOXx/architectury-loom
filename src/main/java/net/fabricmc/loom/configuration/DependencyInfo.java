@@ -84,6 +84,10 @@ public class DependencyInfo {
 		return dependency;
 	}
 
+	public void setResolvedVersion(String resolvedVersion) {
+		this.resolvedVersion = resolvedVersion;
+	}
+
 	public String getResolvedVersion() {
 		if (resolvedVersion != null) {
 			return resolvedVersion;
