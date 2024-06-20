@@ -118,7 +118,8 @@ public class ForgeUserdevProvider extends DependencyProvider {
 		JsonObject json = new JsonObject();
 
 		addLegacyMCPRepo();
-		String mcVersion = fg2Json.get("inheritsFrom").getAsString();
+		String mcVersion = fg2Json.has("inheritsFrom")
+				? fg2Json.get("inheritsFrom").getAsString() : fg2Json.get("assets").getAsString();
 		json.addProperty("mcp", "de.oceanlabs.mcp:mcp:" + mcVersion + ":srg@zip");
 
 		json.addProperty("universal", dependency.getDepString() + ":universal");
@@ -189,7 +190,10 @@ public class ForgeUserdevProvider extends DependencyProvider {
 
 		if (!sourcesMaven.exists(null)) {
 			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(userdevJar.toPath(), false)) {
-				sourcesMaven.copyToMaven(fs.getPath("sources.zip"), null);
+				if (Files.exists(fs.getPath("sources.zip")))
+					sourcesMaven.copyToMaven(fs.getPath("sources.zip"), null);
+				else // 1.7.10
+					sourcesMaven.copyToMaven(fs.getPath("src", "main", "java"), null);
 			}
 		}
 
