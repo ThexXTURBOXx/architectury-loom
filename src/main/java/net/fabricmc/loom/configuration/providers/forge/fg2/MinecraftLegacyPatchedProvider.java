@@ -307,6 +307,9 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 	}
 
 	private String remapAts(SharedServiceManager serviceManager, String ats) throws Exception {
+		// Legacy 1.7.10 fix
+		ats = ats.replaceAll("(<init>\\(.+?\\))([^V])", "$1V$2");
+
 		AccessTransformSet accessTransformSet = AccessTransformSet.create();
 		AccessTransformFormats.FML.read(new StringReader(ats), accessTransformSet);
 

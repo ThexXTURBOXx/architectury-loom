@@ -35,6 +35,9 @@ import com.google.common.hash.Hashing;
 import dev.architectury.loom.forge.ModDirTransformerDiscovererPatch;
 import dev.architectury.loom.neoforge.LaunchHandlerPatcher;
 import dev.architectury.loom.util.ClassVisitorUtil;
+
+import java.util.Map;
+
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ModuleDependency;
@@ -68,6 +71,14 @@ public class ForgeLibrariesProvider {
 	private static final String NEOFORGE_OBJECT_HOLDER_FILE = "net/neoforged/fml/common/asm/ObjectHolderDefinalize.class";
 	private static final String NEOFORGE_LAUNCH_HANDLER_FILE = "net/neoforged/fml/loading/targets/CommonUserdevLaunchHandler.class";
 
+	private static final Map<String, String> LEGACY_LIB_RELOCATIONS = Map.of(
+			"org.scala-lang:scala-parser-combinators_2.11", "org.scala-lang.modules:scala-parser-combinators_2.11",
+			"org.scala-lang:scala-swing_2.11", "org.scala-lang.modules:scala-swing_2.11",
+			"org.scala-lang:scala-xml_2.11", "org.scala-lang.modules:scala-xml_2.11",
+			"tv.twitch:twitch-external-platform", "",
+			"tv.twitch:twitch-platform", ""
+	);
+
 	public static void provide(MappingConfiguration mappingConfiguration, Project project) throws Exception {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		final List<Dependency> dependencies = new ArrayList<>();
@@ -94,6 +105,22 @@ public class ForgeLibrariesProvider {
 						dep = "dev.architectury:mixin-patched" + version + ".+";
 					}
 				}
+			}
+
+			var reloc = LEGACY_LIB_RELOCATIONS.entrySet().stream().filter(e -> lib.startsWith(e.getKey())).findFirst();
+			if (reloc.isPresent()) {
+				if (reloc.get().getValue().isEmpty()) continue; // This means we can exclude the library
+
+				String version = lib.substring(lib.lastIndexOf(":"));
+				// Used for the file extension, for example @jar
+				int atIndex = version.indexOf('@');
+
+				if (atIndex >= 0) {
+					// Strip the file extension away
+					version = version.substring(0, atIndex);
+				}
+
+				dep = reloc.get().getValue() + version;
 			}
 
 			if (dep == null) {
