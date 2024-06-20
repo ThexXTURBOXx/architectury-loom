@@ -77,6 +77,7 @@ public class Constants {
 		public static final String SRG = "srg";
 		public static final String MCP_CONFIG = "mcp";
 		public static final String FORGE = "forge";
+		public static final String FORGE_LEGACY = "forgeLegacy";
 		public static final String NEOFORGE = "neoForge";
 		public static final String FORGE_USERDEV = "forgeUserdev";
 		public static final String FORGE_INSTALLER = "forgeInstaller";
