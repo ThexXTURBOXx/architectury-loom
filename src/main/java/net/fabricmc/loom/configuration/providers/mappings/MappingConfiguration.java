@@ -400,7 +400,8 @@ public class MappingConfiguration {
 
 	private boolean isMCP(Path path) throws IOException {
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(path, false)) {
-			return Files.exists(fs.getPath("fields.csv")) && Files.exists(fs.getPath("methods.csv"));
+			return (Files.exists(fs.getPath("fields.csv")) && Files.exists(fs.getPath("methods.csv")))
+				   || (Files.exists(fs.getPath("conf/fields.csv")) && Files.exists(fs.getPath("conf/methods.csv")));
 		}
 	}
 
