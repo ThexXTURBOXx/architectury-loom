@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2020-2023 FabricMC
+ * Copyright (c) 2020-2024 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
@@ -56,7 +57,7 @@ import dev.architectury.loom.forge.UserdevConfig;
 import dev.architectury.loom.util.MappingOption;
 import dev.architectury.loom.util.TempFiles;
 import org.gradle.api.Project;
-import org.gradle.api.logging.LogLevel;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.Logger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -78,7 +79,6 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ForgeToolExecutor;
-import net.fabricmc.loom.util.MappingsProviderVerbose;
 import net.fabricmc.loom.util.ThreadingUtils;
 import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.ZipUtils;
@@ -242,13 +242,7 @@ public class MinecraftPatchedProvider {
 			builder.extension(new MixinExtension(inputTag -> true));
 		}
 
-		TinyRemapper remapper = builder.build();
-
-		if (project.getGradle().getStartParameter().getLogLevel().compareTo(LogLevel.LIFECYCLE) < 0) {
-			MappingsProviderVerbose.saveFile(remapper);
-		}
-
-		return remapper;
+		return builder.build();
 	}
 
 	private void fixParameterAnnotation(Path jarFile) throws Exception {
@@ -380,32 +374,51 @@ public class MinecraftPatchedProvider {
 		project.getLogger().lifecycle(":access transforming minecraft");
 
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
-		List<Path> atSources = List.of(
-				extension.getForgeUniversalProvider().getForge().toPath(),
-				extension.getForgeUserdevProvider().getUserdevJar().toPath(),
-				((ForgeMinecraftProvider) extension.getMinecraftProvider())
-						.getPatchedProvider()
-						.getMinecraftPatchedIntermediateJar()
-		);
-
+		Path userdevJar = extension.getForgeUserdevProvider().getUserdevJar().toPath();
 		Files.deleteIfExists(target);
 
 		try (var tempFiles = new TempFiles()) {
 			AccessTransformerJarProcessor.executeAt(project, input, target, args -> {
-				for (Path jar : atSources) {
-					byte[] atBytes = ZipUtils.unpackNullable(jar, Constants.Forge.ACCESS_TRANSFORMER_PATH);
-
-					if (atBytes != null) {
-						Path tmpFile = tempFiles.file("at-conf", ".cfg");
-						Files.write(tmpFile, atBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-						args.add("--atFile");
-						args.add(tmpFile.toAbsolutePath().toString());
-					}
+				for (String atFile : extractAccessTransformers(userdevJar, extension.getForgeUserdevProvider().getConfig().ats(), tempFiles)) {
+					args.add("--atFile");
+					args.add(atFile);
 				}
 			});
 		}
 
 		project.getLogger().lifecycle(":access transformed minecraft in " + stopwatch.stop());
+	}
+
+	private static List<String> extractAccessTransformers(Path jar, UserdevConfig.AccessTransformerLocation location, TempFiles tempFiles) throws IOException {
+		final List<String> extracted = new ArrayList<>();
+
+		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(jar)) {
+			for (Path atFile : getAccessTransformerPaths(fs, location)) {
+				byte[] atBytes;
+
+				try {
+					atBytes = Files.readAllBytes(atFile);
+				} catch (NoSuchFileException e) {
+					continue;
+				}
+
+				Path tmpFile = tempFiles.file("at-conf", ".cfg");
+				Files.write(tmpFile, atBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+				extracted.add(tmpFile.toAbsolutePath().toString());
+			}
+		}
+
+		return extracted;
+	}
+
+	private static List<Path> getAccessTransformerPaths(FileSystemUtil.Delegate fs, UserdevConfig.AccessTransformerLocation location) throws IOException {
+		return location.visitIo(directory -> {
+			Path dirPath = fs.getPath(directory);
+
+			try (Stream<Path> paths = Files.list(dirPath)) {
+				return paths.toList();
+			}
+		}, paths -> paths.stream().map(fs::getPath).toList());
 	}
 
 	private void remapPatchedJar(SharedServiceManager serviceManager) throws Exception {
@@ -464,8 +477,9 @@ public class MinecraftPatchedProvider {
 	protected void patchJars(Path clean, Path output, Path patches) throws Exception {
 		ForgeToolExecutor.exec(project, spec -> {
 			UserdevConfig.BinaryPatcherConfig config = getExtension().getForgeUserdevProvider().getConfig().binpatcher();
-			spec.classpath(DependencyDownloader.download(project, config.dependency()));
-			spec.getMainClass().set("net.minecraftforge.binarypatcher.ConsoleTool");
+			final FileCollection download = DependencyDownloader.download(project, config.dependency());
+			spec.classpath(download);
+			spec.getMainClass().set(getMainClass(download));
 
 			for (String arg : config.args()) {
 				String actual = switch (arg) {
@@ -477,6 +491,45 @@ public class MinecraftPatchedProvider {
 				spec.args(actual);
 			}
 		});
+	}
+
+	private static String getMainClass(final Iterable<File> files) {
+		String mainClass = null;
+		IOException ex = null;
+
+		for (File file : files) {
+			if (file.getName().endsWith(".jar")) {
+				try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(file.toPath())) {
+					final Path mfPath = fs.getPath("META-INF/MANIFEST.MF");
+
+					if (Files.exists(mfPath)) {
+						try (InputStream in = Files.newInputStream(mfPath)) {
+							mainClass = new Manifest(in).getMainAttributes().getValue("Main-Class");
+						}
+					}
+				} catch (final IOException e) {
+					if (ex == null) {
+						ex = e;
+					} else {
+						ex.addSuppressed(e);
+					}
+				}
+
+				if (mainClass != null) {
+					break;
+				}
+			}
+		}
+
+		if (mainClass == null) {
+			if (ex != null) {
+				throw new UncheckedIOException(ex);
+			} else {
+				throw new RuntimeException("Failed to find main class");
+			}
+		}
+
+		return mainClass;
 	}
 
 	private void walkFileSystems(Path source, Path target, Predicate<Path> filter, Function<FileSystem, Iterable<Path>> toWalk, FsPathConsumer action)

@@ -125,6 +125,7 @@ public class ForgeUserdevProvider extends DependencyProvider {
 		json.add("binpatcher", createLegacyBinpatcher());
 		json.add("libraries", createLegacyLibs(fg2Json));
 		json.add("runs", createLegacyRuns());
+		json.add("ats", createLegacyAts());
 
 		return json;
 	}
@@ -171,6 +172,12 @@ public class ForgeUserdevProvider extends DependencyProvider {
 		runs.add("client", clientRun);
 		runs.add("server", serverRun);
 		return runs;
+	}
+
+	private static JsonArray createLegacyAts() {
+		JsonArray array = new JsonArray();
+		array.add("merged_at.cfg");
+		return array;
 	}
 
 	private String createLegacySources(DependencyInfo dependency) throws IOException {
