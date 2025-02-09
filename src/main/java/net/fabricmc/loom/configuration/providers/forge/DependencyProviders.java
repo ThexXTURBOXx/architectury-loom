@@ -79,9 +79,13 @@ public class DependencyProviders {
 		Map<String, ProviderList> providerListMap = new HashMap<>();
 		List<ProviderList> targetProviders = new ArrayList<>();
 
-		project.getConfigurations().getByName(Constants.Configurations.FORGE_USERDEV).resolutionStrategy(rs ->
-				rs.dependencySubstitution(ds -> ds.substitute(ds.module("net.minecraftforge:forge"))
-						.withClassifier("userdev")));
+		try {
+			project.getConfigurations().getByName(Constants.Configurations.FORGE_USERDEV).resolutionStrategy(rs ->
+					rs.dependencySubstitution(ds -> ds.substitute(ds.module("net.minecraftforge:forge"))
+							.withClassifier("userdev")));
+		} catch (Throwable ignored) {
+			// We don't care about failing this as it does so in configurations where this is unwanted anyway...
+		}
 
 		for (DependencyProvider provider : dependencyProviderList) {
 			String targetConfig = provider.getTargetConfig().equals(Constants.Configurations.FORGE)

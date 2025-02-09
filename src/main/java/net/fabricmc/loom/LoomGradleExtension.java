@@ -183,7 +183,8 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 	}
 
 	default int getForgeSpec() {
-		return getForgeUserdevProvider().getForgeSpec();
+		ForgeUserdevProvider prov = getForgeUserdevProvider();
+		return prov == null ? Integer.MAX_VALUE : prov.getForgeSpec();
 	}
 
 	default boolean isLegacyForge() {
