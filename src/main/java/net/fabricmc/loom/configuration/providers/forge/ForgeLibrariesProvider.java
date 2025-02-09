@@ -30,14 +30,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.hash.Hashing;
 import dev.architectury.loom.forge.ModDirTransformerDiscovererPatch;
 import dev.architectury.loom.neoforge.LaunchHandlerPatcher;
 import dev.architectury.loom.util.ClassVisitorUtil;
-
-import java.util.Map;
-
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ModuleDependency;
@@ -115,6 +113,7 @@ public class ForgeLibrariesProvider {
 			}
 
 			var reloc = LEGACY_LIB_RELOCATIONS.entrySet().stream().filter(e -> lib.startsWith(e.getKey())).findFirst();
+
 			if (reloc.isPresent()) {
 				if (reloc.get().getValue().isEmpty()) continue; // This means we can exclude the library
 

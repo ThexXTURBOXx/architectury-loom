@@ -31,30 +31,32 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-
 import java.util.stream.Stream;
-
-import net.fabricmc.loom.util.ZipUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.Nullable;
 
+import net.fabricmc.loom.util.ZipUtils;
+
 public record LocalMavenHelper(String group, String name, String version, @Nullable String baseClassifier, Path root) {
 	public Path copyToMaven(Path artifact, @Nullable String classifier) throws IOException {
 		if (!artifact.getFileName().toString().endsWith(".jar") && !artifact.getFileName().toString().endsWith(".zip")
-			&& !Files.isDirectory(artifact)) {
+					&& !Files.isDirectory(artifact)) {
 			throw new UnsupportedOperationException();
 		}
 
 		Files.createDirectories(getDirectory());
 		savePom();
-		if (!Files.isDirectory(artifact))
+
+		if (!Files.isDirectory(artifact)) {
 			return Files.copy(artifact, getOutputFile(classifier), StandardCopyOption.REPLACE_EXISTING);
+		}
 
 		// Legacy 1.7.10 has its sources directly as a directory in the jar - extract and re-pack it
 		Path temp = getDirectory().resolve("temp");
 		if (Files.exists(temp)) FileUtils.deleteDirectory(temp.toFile());
 		Files.createDirectories(temp);
+
 		try (Stream<Path> stream = Files.walk(artifact)) {
 			stream.forEachOrdered(sourcePath -> {
 				try {
@@ -65,6 +67,7 @@ public record LocalMavenHelper(String group, String name, String version, @Nulla
 				}
 			});
 		}
+
 		Path to = getOutputFile(classifier);
 		ZipUtils.pack(temp, to);
 		FileUtils.deleteDirectory(temp.toFile());

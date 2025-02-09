@@ -29,14 +29,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.fabricmc.loom.util.Constants;
-
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.DependencySet;
 
 import net.fabricmc.loom.configuration.DependencyInfo;
+import net.fabricmc.loom.util.Constants;
 
 public class DependencyProviders {
 	private static class ProviderList {
@@ -86,8 +85,8 @@ public class DependencyProviders {
 
 		for (DependencyProvider provider : dependencyProviderList) {
 			String targetConfig = provider.getTargetConfig().equals(Constants.Configurations.FORGE)
-				&& !project.getConfigurations().getByName(Constants.Configurations.FORGE_LEGACY).getDependencies().isEmpty()
-					? Constants.Configurations.FORGE_LEGACY : provider.getTargetConfig();
+						&& !project.getConfigurations().getByName(Constants.Configurations.FORGE_1710).getDependencies().isEmpty()
+					? Constants.Configurations.FORGE_1710 : provider.getTargetConfig();
 			providerListMap.computeIfAbsent(targetConfig, (k) -> {
 				ProviderList list = new ProviderList(k);
 				targetProviders.add(list);
