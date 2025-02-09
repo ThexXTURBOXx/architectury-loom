@@ -51,22 +51,26 @@ class ForgeTest extends Specification implements GradleProjectTestTrait {
 		result.task(":build").outcome == SUCCESS
 
 		where:
-		mcVersion | forgeVersion | javaVersion | mappings
-		'1.20.1'  | "47.2.1"     | '17'        | "loom.officialMojangMappings()"
-		'1.20.1'  | "47.2.1"     | '17'        | "'net.fabricmc:yarn:1.19.4+build.2:v2'"
-		'1.19.4'  | "45.0.43"    | '17'        | "loom.officialMojangMappings()"
-		'1.19.4'  | "45.0.43"    | '17'        | "'net.fabricmc:yarn:1.19.4+build.2:v2'"
-		'1.18.1'  | "39.0.63"    | '17'        | "loom.officialMojangMappings()"
-		'1.18.1'  | "39.0.63"    | '17'        | '"net.fabricmc:yarn:1.18.1+build.22:v2"'
-		'1.17.1'  | "37.0.67"    | '16'        | "loom.officialMojangMappings()"
-		'1.17.1'  | "37.0.67"    | '16'        | '"net.fabricmc:yarn:1.17.1+build.61:v2"'
-		'1.16.5'  | "36.2.4"     | '8'         | "loom.officialMojangMappings()"
-		'1.16.5'  | "36.2.4"     | '8'         | '"net.fabricmc:yarn:1.16.5+build.5:v2"'
-		'1.16.5'  | '36.2.4'     | '8'         | '"de.oceanlabs.mcp:mcp_snapshot:20210309-1.16.5"'
-		'1.14.4'  | "28.2.23"    | '8'         | "loom.officialMojangMappings()"
-		'1.14.4'  | "28.2.23"    | '8'         | '"net.fabricmc:yarn:1.14.4+build.18:v2"'
-		'1.13.2'  | "25.0.223"   | '8'         | '"de.oceanlabs.mcp:mcp_stable:47-1.13.2"'
-		'1.12.2'  | "14.23.0.2486" | '8'       | '"de.oceanlabs.mcp:mcp_snapshot:20170615-1.12"'
-		'1.8.9'   | "11.15.1.2318-1.8.9" | '8' | '"de.oceanlabs.mcp:mcp_stable:22-1.8.9"'
+		mcVersion | forgeVersion | javaVersion  | mappings
+		'1.20.1'  | "47.2.1"     | '17'         | "loom.officialMojangMappings()"
+		'1.20.1'  | "47.2.1"     | '17'         | "'net.fabricmc:yarn:1.19.4+build.2:v2'"
+		'1.19.4'  | "45.0.43"    | '17'         | "loom.officialMojangMappings()"
+		'1.19.4'  | "45.0.43"    | '17'         | "'net.fabricmc:yarn:1.19.4+build.2:v2'"
+		'1.18.1'  | "39.0.63"    | '17'         | "loom.officialMojangMappings()"
+		'1.18.1'  | "39.0.63"    | '17'         | '"net.fabricmc:yarn:1.18.1+build.22:v2"'
+		'1.17.1'  | "37.0.67"    | '16'         | "loom.officialMojangMappings()"
+		'1.17.1'  | "37.0.67"    | '16'         | '"net.fabricmc:yarn:1.17.1+build.61:v2"'
+		'1.16.5'  | "36.2.4"     | '8'          | "loom.officialMojangMappings()"
+		'1.16.5'  | "36.2.4"     | '8'          | '"net.fabricmc:yarn:1.16.5+build.5:v2"'
+		'1.16.5'  | '36.2.4'     | '8'          | '"de.oceanlabs.mcp:mcp_snapshot:20210309-1.16.5"'
+		'1.14.4'  | "28.2.23"    | '8'          | "loom.officialMojangMappings()"
+		'1.14.4'  | "28.2.23"    | '8'          | '"net.fabricmc:yarn:1.14.4+build.18:v2"'
+		'1.13.2'  | "25.0.223"   | '8'          | '"de.oceanlabs.mcp:mcp_stable:47-1.13.2"'
+		'1.12.2'  | "14.23.0.2486" | '8'        | '"de.oceanlabs.mcp:mcp_snapshot:20170615-1.12"'
+		'1.11.2'  | "13.20.1.2588" | '8'        | '"de.oceanlabs.mcp:mcp_stable:32-1.11"'
+		'1.10.2'  | "12.18.3.2511" | '8'        | '"de.oceanlabs.mcp:mcp_stable:29-1.10.2"'
+		'1.9.4'   | "12.17.0.2317-1.9.4"  | '8' | '"de.oceanlabs.mcp:mcp_stable:26-1.9.4"'
+		'1.8.9'   | "11.15.1.2318-1.8.9"  | '8' | '"de.oceanlabs.mcp:mcp_stable:22-1.8.9"'
+		'1.7.10'  | "10.13.4.1614-1.7.10" | '8' | '"net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:userdev"'
 	}
 }
