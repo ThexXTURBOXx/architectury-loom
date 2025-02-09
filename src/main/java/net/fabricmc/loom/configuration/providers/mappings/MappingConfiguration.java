@@ -299,7 +299,7 @@ public class MappingConfiguration {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 
 		// FIXME why is this special case necessary?
-		ForgeMappingsMerger.ExtraMappings extraMappings = extension.isLegacyForge()
+		ForgeMappingsMerger.ExtraMappings extraMappings = extension.getForgeSpec() <= 2
 				? null
 				: ForgeMappingsMerger.ExtraMappings.ofMojmapTsrg(getMojmapSrgFileIfPossible(project));
 
