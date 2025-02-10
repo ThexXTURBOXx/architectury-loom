@@ -346,7 +346,7 @@ publishing {
 	repositories {
 		if (System.getenv("NEXUS_USER") != null) {
 			maven {
-				url = "https://repo.sk1er.club/repository/maven-releases/"
+				url = "https://repo.essential.gg/public"
 				name = "nexus-public"
 				credentials {
 					username = System.getenv("NEXUS_USER")
