@@ -31,7 +31,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -73,7 +72,6 @@ import net.fabricmc.loom.util.Pair;
 import net.fabricmc.loom.util.ThreadingUtils;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.legacyforge.CoreModManagerTransformer;
-import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
 import net.fabricmc.loom.util.service.SharedServiceManager;
 import net.fabricmc.loom.util.srg.AccessTransformSetMapper;
 import net.fabricmc.lorenztiny.TinyMappingsReader;
@@ -147,11 +145,7 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 	public void remapJar() throws Exception {
 		if (Files.notExists(forgeJar)) {
 			dirty = true;
-
-			try (var serviceManager = new ScopedSharedServiceManager()) {
-				patchForge(serviceManager);
-			}
-
+			patchForge();
 			applyLoomPatchVersion(forgeJar);
 		}
 
@@ -178,7 +172,7 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 		}
 	}
 
-	private void patchForge(SharedServiceManager serviceManager) throws Exception {
+	private void patchForge() throws Exception {
 		Stopwatch stopwatch = Stopwatch.createStarted();
 		logger.lifecycle(":patching forge");
 
@@ -258,11 +252,6 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 			return writer.toByteArray();
 		})));
 
-		// Remap the legacy srg access transformers into modern style official ones so `accessTransform` picks them up
-		String ats = new String(ZipUtils.unpack(forgeJar, "forge_at.cfg"), StandardCharsets.UTF_8);
-		ats = remapAts(serviceManager, ats);
-		ZipUtils.add(forgeJar, Constants.Forge.ACCESS_TRANSFORMER_PATH, ats);
-
 		logger.lifecycle(":patched forge in " + stopwatch.stop());
 	}
 
@@ -306,11 +295,12 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 		logger.info(":merged jars in " + stopwatch);
 	}
 
-	private String remapAts(SharedServiceManager serviceManager, String ats) throws Exception {
+	public static String remapAts(Project project, SharedServiceManager serviceManager, String ats) throws IOException {
 		AccessTransformSet accessTransformSet = AccessTransformSet.create();
 		AccessTransformFormats.FML.read(new StringReader(ats), accessTransformSet);
 
-		TinyMappingsService mappingsService = getExtension().getMappingConfiguration().getMappingsService(serviceManager, MappingOption.WITH_SRG);
+		LoomGradleExtension extension = LoomGradleExtension.get(project);
+		TinyMappingsService mappingsService = extension.getMappingConfiguration().getMappingsService(serviceManager, MappingOption.WITH_SRG);
 		MappingTree mappingTree = mappingsService.getMappingTree();
 		MappingSet mappingSet = new TinyMappingsReader(mappingTree, "srg", "official").read();
 		accessTransformSet = AccessTransformSetMapper.remap(accessTransformSet, mappingSet);

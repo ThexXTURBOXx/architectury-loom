@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -70,6 +71,7 @@ import org.objectweb.asm.tree.ClassNode;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.configuration.accesstransformer.AccessTransformerJarProcessor;
+import net.fabricmc.loom.configuration.providers.forge.fg2.MinecraftLegacyPatchedProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpConfigProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpExecutor;
 import net.fabricmc.loom.configuration.providers.forge.minecraft.ForgeMinecraftProvider;
@@ -379,7 +381,7 @@ public class MinecraftPatchedProvider {
 
 		try (var tempFiles = new TempFiles()) {
 			AccessTransformerJarProcessor.executeAt(project, input, target, args -> {
-				for (String atFile : extractAccessTransformers(userdevJar, extension.getForgeUserdevProvider().getConfig().ats(), tempFiles)) {
+				for (String atFile : extractAccessTransformers(project, userdevJar, extension.getForgeUserdevProvider().getConfig().ats(), tempFiles)) {
 					args.add("--atFile");
 					args.add(atFile);
 				}
@@ -389,7 +391,7 @@ public class MinecraftPatchedProvider {
 		project.getLogger().lifecycle(":access transformed minecraft in " + stopwatch.stop());
 	}
 
-	private static List<String> extractAccessTransformers(Path jar, UserdevConfig.AccessTransformerLocation location, TempFiles tempFiles) throws IOException {
+	private static List<String> extractAccessTransformers(Project project, Path jar, UserdevConfig.AccessTransformerLocation location, TempFiles tempFiles) throws IOException {
 		final List<String> extracted = new ArrayList<>();
 
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(jar)) {
@@ -400,6 +402,14 @@ public class MinecraftPatchedProvider {
 					atBytes = Files.readAllBytes(atFile);
 				} catch (NoSuchFileException e) {
 					continue;
+				}
+
+				if (LoomGradleExtension.get(project).isLegacyForge()) {
+					try (var serviceManager = new ScopedSharedServiceManager()) {
+						String ats = new String(atBytes, StandardCharsets.UTF_8);
+						ats = MinecraftLegacyPatchedProvider.remapAts(project, serviceManager, ats);
+						atBytes = ats.getBytes(StandardCharsets.UTF_8);
+					}
 				}
 
 				Path tmpFile = tempFiles.file("at-conf", ".cfg");
