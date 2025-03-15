@@ -242,7 +242,7 @@ public abstract class CompileConfiguration implements Runnable {
 
 		if (extension.isForgeLike()) {
 			ForgeLibrariesProvider.provide(mappingConfiguration, project);
-			((ForgeMinecraftProvider) minecraftProvider).getPatchedProvider().provide();
+			((ForgeMinecraftProvider) minecraftProvider).getPatchedProvider().provide(configContext.serviceFactory());
 		}
 
 		mappingConfiguration.setupPost(project);

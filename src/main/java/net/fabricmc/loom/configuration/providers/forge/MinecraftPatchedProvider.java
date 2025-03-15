@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -71,6 +72,7 @@ import org.objectweb.asm.tree.ClassNode;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.configuration.accesstransformer.AccessTransformerJarProcessor;
+import net.fabricmc.loom.configuration.providers.forge.fg2.MinecraftLegacyPatchedProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpConfigProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpExecutor;
 import net.fabricmc.loom.configuration.providers.forge.minecraft.ForgeMinecraftProvider;
@@ -179,7 +181,7 @@ public class MinecraftPatchedProvider {
 		}
 	}
 
-	public void provide() throws Exception {
+	public void provide(ServiceFactory serviceFactory) throws Exception {
 		initPatchedFiles();
 		checkCache();
 
@@ -202,7 +204,7 @@ public class MinecraftPatchedProvider {
 
 		if (dirty || Files.notExists(minecraftPatchedIntermediateAtJar)) {
 			this.dirty = true;
-			accessTransformForge();
+			accessTransformForge(serviceFactory);
 		}
 	}
 
@@ -358,13 +360,13 @@ public class MinecraftPatchedProvider {
 		}
 	}
 
-	private void accessTransformForge() throws IOException {
+	private void accessTransformForge(ServiceFactory serviceFactory) throws IOException {
 		Path input = minecraftPatchedIntermediateJar;
 		Path target = minecraftPatchedIntermediateAtJar;
-		accessTransform(project, input, target);
+		accessTransform(project, serviceFactory, input, target);
 	}
 
-	public static void accessTransform(Project project, Path input, Path target) throws IOException {
+	public static void accessTransform(Project project, ServiceFactory serviceFactory, Path input, Path target) throws IOException {
 		Stopwatch stopwatch = Stopwatch.createStarted();
 
 		project.getLogger().lifecycle(":access transforming minecraft");
@@ -375,7 +377,7 @@ public class MinecraftPatchedProvider {
 
 		try (var tempFiles = new TempFiles()) {
 			AccessTransformerJarProcessor.executeAt(project, input, target, args -> {
-				for (String atFile : extractAccessTransformers(userdevJar, extension.getForgeUserdevProvider().getConfig().ats(), tempFiles)) {
+				for (String atFile : extractAccessTransformers(project, serviceFactory, userdevJar, extension.getForgeUserdevProvider().getConfig().ats(), tempFiles)) {
 					args.add("--atFile");
 					args.add(atFile);
 				}
@@ -385,7 +387,7 @@ public class MinecraftPatchedProvider {
 		project.getLogger().lifecycle(":access transformed minecraft in " + stopwatch.stop());
 	}
 
-	private static List<String> extractAccessTransformers(Path jar, UserdevConfig.AccessTransformerLocation location, TempFiles tempFiles) throws IOException {
+	private static List<String> extractAccessTransformers(Project project, ServiceFactory serviceFactory, Path jar, UserdevConfig.AccessTransformerLocation location, TempFiles tempFiles) throws IOException {
 		final List<String> extracted = new ArrayList<>();
 
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(jar)) {
@@ -396,6 +398,12 @@ public class MinecraftPatchedProvider {
 					atBytes = Files.readAllBytes(atFile);
 				} catch (NoSuchFileException e) {
 					continue;
+				}
+
+				if (LoomGradleExtension.get(project).isLegacyForge()) {
+					String ats = new String(atBytes, StandardCharsets.UTF_8);
+					ats = MinecraftLegacyPatchedProvider.remapAts(project, serviceFactory, ats);
+					atBytes = ats.getBytes(StandardCharsets.UTF_8);
 				}
 
 				Path tmpFile = tempFiles.file("at-conf", ".cfg");
