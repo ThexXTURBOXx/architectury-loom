@@ -319,7 +319,7 @@ public class MappingConfiguration {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 
 		// FIXME why is this special case necessary?
-		ForgeMappingsMerger.ExtraMappings extraMappings = extension.isLegacyForge()
+		ForgeMappingsMerger.ExtraMappings extraMappings = extension.getForgeSpec() <= 2
 				? null
 				: ForgeMappingsMerger.ExtraMappings.ofMojmapTsrg(getMojmapSrgFileIfPossible(project));
 
@@ -419,7 +419,8 @@ public class MappingConfiguration {
 
 	private boolean isMCP(Path path) throws IOException {
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(path, false)) {
-			return Files.exists(fs.getPath("fields.csv")) && Files.exists(fs.getPath("methods.csv"));
+			return Files.exists(fs.getPath("fields.csv")) && Files.exists(fs.getPath("methods.csv"))
+				|| (Files.exists(fs.getPath("conf/fields.csv")) && Files.exists(fs.getPath("conf/methods.csv")));
 		}
 	}
 
