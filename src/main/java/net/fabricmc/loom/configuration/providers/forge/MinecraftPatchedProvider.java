@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -72,6 +73,7 @@ import org.objectweb.asm.tree.ClassNode;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.configuration.accesstransformer.AccessTransformerJarProcessor;
+import net.fabricmc.loom.configuration.providers.forge.fg2.MinecraftLegacyPatchedProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpConfigProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpExecutor;
 import net.fabricmc.loom.configuration.providers.forge.minecraft.ForgeMinecraftProvider;
@@ -97,13 +99,13 @@ import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
 
 public class MinecraftPatchedProvider {
 	private static final String LOOM_PATCH_VERSION_KEY = "Loom-Patch-Version";
-	private static final String CURRENT_LOOM_PATCH_VERSION = "9";
+	private static final String CURRENT_LOOM_PATCH_VERSION = "9+essential.1";
 	private static final String NAME_MAPPING_SERVICE_PATH = "/inject/META-INF/services/cpw.mods.modlauncher.api.INameMappingService";
 
-	private final Project project;
-	private final Logger logger;
-	private final MinecraftProvider minecraftProvider;
-	private final Type type;
+	protected final Project project;
+	protected final Logger logger;
+	protected final MinecraftProvider minecraftProvider;
+	protected final Type type;
 
 	// Step 1: Remap Minecraft to intermediate mappings, merge if needed
 	private Path minecraftIntermediateJar;
@@ -180,7 +182,7 @@ public class MinecraftPatchedProvider {
 		}
 	}
 
-	public void provide() throws Exception {
+	public void provide(ServiceFactory serviceFactory) throws Exception {
 		initPatchedFiles();
 		checkCache();
 
@@ -203,7 +205,7 @@ public class MinecraftPatchedProvider {
 
 		if (dirty || Files.notExists(minecraftPatchedIntermediateAtJar)) {
 			this.dirty = true;
-			accessTransformForge();
+			accessTransformForge(serviceFactory);
 		}
 	}
 
@@ -379,7 +381,7 @@ public class MinecraftPatchedProvider {
 		return getExtension().getForgeUserdevProvider().getUserdevJar();
 	}
 
-	private boolean isPatchedJarUpToDate(Path jar) throws IOException {
+	protected boolean isPatchedJarUpToDate(Path jar) throws IOException {
 		if (Files.notExists(jar)) return false;
 
 		byte[] manifestBytes = ZipUtils.unpackNullable(jar, "META-INF/MANIFEST.MF");
@@ -400,13 +402,13 @@ public class MinecraftPatchedProvider {
 		}
 	}
 
-	private void accessTransformForge() throws IOException {
+	private void accessTransformForge(ServiceFactory serviceFactory) throws IOException {
 		Path input = minecraftPatchedIntermediateJar;
 		Path target = minecraftPatchedIntermediateAtJar;
-		accessTransform(project, input, target);
+		accessTransform(project, serviceFactory, input, target);
 	}
 
-	public static void accessTransform(Project project, Path input, Path target) throws IOException {
+	public static void accessTransform(Project project, ServiceFactory serviceFactory, Path input, Path target) throws IOException {
 		Stopwatch stopwatch = Stopwatch.createStarted();
 
 		project.getLogger().lifecycle(":access transforming minecraft");
@@ -417,7 +419,7 @@ public class MinecraftPatchedProvider {
 
 		try (var tempFiles = new TempFiles()) {
 			AccessTransformerJarProcessor.executeAt(project, input, target, args -> {
-				for (String atFile : extractAccessTransformers(userdevJar, extension.getForgeUserdevProvider().getConfig().ats(), tempFiles)) {
+				for (String atFile : extractAccessTransformers(project, serviceFactory, userdevJar, extension.getForgeUserdevProvider().getConfig().ats(), tempFiles)) {
 					args.add("--atFile");
 					args.add(atFile);
 				}
@@ -427,7 +429,7 @@ public class MinecraftPatchedProvider {
 		project.getLogger().lifecycle(":access transformed minecraft in " + stopwatch.stop());
 	}
 
-	private static List<String> extractAccessTransformers(Path jar, UserdevConfig.AccessTransformerLocation location, TempFiles tempFiles) throws IOException {
+	private static List<String> extractAccessTransformers(Project project, ServiceFactory serviceFactory, Path jar, UserdevConfig.AccessTransformerLocation location, TempFiles tempFiles) throws IOException {
 		final List<String> extracted = new ArrayList<>();
 
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(jar)) {
@@ -438,6 +440,12 @@ public class MinecraftPatchedProvider {
 					atBytes = Files.readAllBytes(atFile);
 				} catch (NoSuchFileException e) {
 					continue;
+				}
+
+				if (LoomGradleExtension.get(project).isLegacyForge()) {
+					String ats = new String(atBytes, StandardCharsets.UTF_8);
+					ats = MinecraftLegacyPatchedProvider.remapAts(project, serviceFactory, ats);
+					atBytes = ats.getBytes(StandardCharsets.UTF_8);
 				}
 
 				Path tmpFile = tempFiles.file("at-conf", ".cfg");
@@ -512,7 +520,7 @@ public class MinecraftPatchedProvider {
 		logger.lifecycle(":patched jars in " + stopwatch.stop());
 	}
 
-	private void patchJars(Path clean, Path output, Path patches) {
+	protected void patchJars(Path clean, Path output, Path patches) throws Exception {
 		ForgeToolValueSource.exec(project, spec -> {
 			UserdevConfig.BinaryPatcherConfig config = getExtension().getForgeUserdevProvider().getConfig().binpatcher();
 			final FileCollection download = DependencyDownloader.download(project, config.dependency());
@@ -595,11 +603,11 @@ public class MinecraftPatchedProvider {
 		}
 	}
 
-	private void walkFileSystems(Path source, Path target, Predicate<Path> filter, FsPathConsumer action) throws IOException {
+	protected void walkFileSystems(Path source, Path target, Predicate<Path> filter, FsPathConsumer action) throws IOException {
 		walkFileSystems(source, target, filter, FileSystem::getRootDirectories, action);
 	}
 
-	private void copyMissingClasses(Path source, Path target) throws IOException {
+	protected void copyMissingClasses(Path source, Path target) throws IOException {
 		walkFileSystems(source, target, it -> it.toString().endsWith(".class"), (sourceFs, targetFs, sourcePath, targetPath) -> {
 			if (Files.exists(targetPath)) return;
 			Path parent = targetPath.getParent();
@@ -621,7 +629,7 @@ public class MinecraftPatchedProvider {
 		walkFileSystems(source, target, filter, this::copyReplacing);
 	}
 
-	private void copyReplacing(FileSystem sourceFs, FileSystem targetFs, Path sourcePath, Path targetPath) throws IOException {
+	protected void copyReplacing(FileSystem sourceFs, FileSystem targetFs, Path sourcePath, Path targetPath) throws IOException {
 		Path parent = targetPath.getParent();
 
 		if (parent != null) {
@@ -698,7 +706,7 @@ public class MinecraftPatchedProvider {
 		SERVER_ONLY("server", "server", (patch, userdev) -> patch.serverPatches),
 		MERGED("merged", "joined", (patch, userdev) -> userdev.joinedPatches);
 
-		private final String id;
+		public final String id;
 		private final String mcpId;
 		private final BiFunction<PatchProvider, ForgeUserdevProvider, Path> patches;
 

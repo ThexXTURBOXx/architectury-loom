@@ -100,7 +100,7 @@ public abstract class GenerateForgePatchedSourcesTask extends AbstractLoomTask {
 
 			// Transform game jar before decompiling
 			Path accessTransformed = cache.resolve("access-transformed.jar");
-			MinecraftPatchedProvider.accessTransform(getProject(), getInputJar().get().getAsFile().toPath(), accessTransformed);
+			MinecraftPatchedProvider.accessTransform(getProject(), serviceFactory, getInputJar().get().getAsFile().toPath(), accessTransformed);
 			Path sideAnnotationStripped = cache.resolve("side-annotation-stripped.jar");
 			stripSideAnnotations(accessTransformed, sideAnnotationStripped);
 
