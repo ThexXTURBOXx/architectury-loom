@@ -68,6 +68,7 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DeletingFileVisitor;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ZipUtils;
+import net.fabricmc.loom.util.gradle.GradleUtils;
 import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
 import net.fabricmc.loom.util.service.SharedServiceManager;
 import net.fabricmc.loom.util.srg.ForgeMappingsMerger;
@@ -189,7 +190,7 @@ public class MappingConfiguration {
 			storeMappings(project, serviceManager, minecraftProvider, inputJar);
 		} else {
 			try (FileSystemUtil.Delegate fileSystem = FileSystemUtil.getJarFileSystem(inputJar, false)) {
-				extractExtras(fileSystem.get());
+				extractExtras(project, fileSystem.get());
 			}
 		}
 
@@ -338,7 +339,7 @@ public class MappingConfiguration {
 
 		try (FileSystemUtil.Delegate delegate = FileSystemUtil.getJarFileSystem(inputJar)) {
 			extractMappings(delegate.fs(), baseTinyMappings);
-			extractExtras(delegate.fs());
+			extractExtras(project, delegate.fs());
 		}
 
 		if (areMappingsV2(baseTinyMappings)) {
@@ -419,8 +420,11 @@ public class MappingConfiguration {
 		Files.copy(jar.getPath("mappings/mappings.tiny"), extractTo, StandardCopyOption.REPLACE_EXISTING);
 	}
 
-	private void extractExtras(FileSystem jar) throws IOException {
-		extractUnpickDefinitions(jar);
+	private void extractExtras(Project project, FileSystem jar) throws IOException {
+		if (!GradleUtils.getBooleanProperty(project, "essential.loom.disableUnpick")) {
+			extractUnpickDefinitions(jar);
+		}
+
 		extractSignatureFixes(jar);
 	}
 
