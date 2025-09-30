@@ -68,6 +68,7 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DeletingFileVisitor;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ZipUtils;
+import net.fabricmc.loom.util.gradle.GradleUtils;
 import net.fabricmc.loom.util.service.ScopedServiceFactory;
 import net.fabricmc.loom.util.service.ServiceFactory;
 import net.fabricmc.loom.util.srg.ForgeMappingsMerger;
@@ -203,7 +204,7 @@ public class MappingConfiguration {
 			storeMappings(project, serviceFactory, minecraftProvider, inputJar);
 		} else {
 			try (FileSystemUtil.Delegate fileSystem = FileSystemUtil.getJarFileSystem(inputJar, false)) {
-				extractExtras(fileSystem.get());
+				extractExtras(project, fileSystem.get());
 			}
 		}
 
@@ -318,7 +319,12 @@ public class MappingConfiguration {
 
 	private static void mergeSrg(Project project, Path source, Path target) throws IOException {
 		Stopwatch stopwatch = Stopwatch.createStarted();
-		ForgeMappingsMerger.ExtraMappings extraMappings = ForgeMappingsMerger.ExtraMappings.ofMojmapTsrg(getMojmapSrgFileIfPossible(project));
+		LoomGradleExtension extension = LoomGradleExtension.get(project);
+
+		// FIXME why is this special case necessary?
+		ForgeMappingsMerger.ExtraMappings extraMappings = extension.isLegacyForge()
+				? null
+				: ForgeMappingsMerger.ExtraMappings.ofMojmapTsrg(getMojmapSrgFileIfPossible(project));
 
 		try (Tiny2FileWriter writer = new Tiny2FileWriter(Files.newBufferedWriter(target, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING), false)) {
 			ForgeMappingsMerger.mergeSrg(getRawSrgFile(project), source, extraMappings, true).accept(writer);
@@ -355,7 +361,7 @@ public class MappingConfiguration {
 
 		try (FileSystemUtil.Delegate delegate = FileSystemUtil.getJarFileSystem(inputJar)) {
 			extractMappings(delegate.fs(), baseTinyMappings);
-			extractExtras(delegate.fs());
+			extractExtras(project, delegate.fs());
 		}
 
 		if (areMappingsV2(baseTinyMappings)) {
@@ -403,6 +409,7 @@ public class MappingConfiguration {
 			project.getDependencies().add(provider.getTargetConfig(), "de.oceanlabs.mcp:mcp_config:" + extension.getMinecraftProvider().minecraftVersion());
 			Configuration configuration = project.getConfigurations().getByName(provider.getTargetConfig());
 			provider.provide(DependencyInfo.create(project, configuration.getDependencies().iterator().next(), configuration));
+			extension.getDependencyProviders().addProvider(provider);
 		}
 
 		Path srgPath = getRawSrgFile(project);
@@ -438,8 +445,11 @@ public class MappingConfiguration {
 		Files.copy(jar.getPath("mappings/mappings.tiny"), extractTo, StandardCopyOption.REPLACE_EXISTING);
 	}
 
-	private void extractExtras(FileSystem jar) throws IOException {
-		extractUnpickDefinitions(jar);
+	private void extractExtras(Project project, FileSystem jar) throws IOException {
+		if (!GradleUtils.getBooleanProperty(project, "essential.loom.disableUnpick")) {
+			extractUnpickDefinitions(jar);
+		}
+
 		extractSignatureFixes(jar);
 	}
 

@@ -1,17 +1,24 @@
 package dev.architectury.loom.forge.tool;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
 import dev.architectury.loom.forge.UserdevConfig;
+import dev.architectury.loom.util.MappingOption;
 import dev.architectury.loom.util.TempFiles;
+import org.cadixdev.at.AccessTransformSet;
+import org.cadixdev.at.io.AccessTransformFormats;
+import org.cadixdev.lorenz.MappingSet;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
@@ -21,8 +28,11 @@ import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Nested;
+import org.gradle.api.tasks.Optional;
 
+import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.loom.LoomGradleExtension;
+import net.fabricmc.loom.configuration.providers.mappings.TinyMappingsService;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftVersionMeta;
 import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.FileSystemUtil;
@@ -30,6 +40,8 @@ import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.service.Service;
 import net.fabricmc.loom.util.service.ServiceFactory;
 import net.fabricmc.loom.util.service.ServiceType;
+import net.fabricmc.loom.util.srg.AccessTransformSetMapper;
+import net.fabricmc.lorenztiny.TinyMappingsReader;
 
 /**
  * A service that executes the access transformer tool.
@@ -50,6 +62,10 @@ public final class AccessTransformerService extends Service<AccessTransformerSer
 
 		@Nested
 		Property<ForgeToolService.Options> getToolServiceOptions();
+
+		@Nested
+		@Optional
+		Property<TinyMappingsService.Options> getMappingsServiceOptions();
 	}
 
 	public static Provider<Options> createOptions(Project project, Object atFiles) {
@@ -68,6 +84,12 @@ public final class AccessTransformerService extends Service<AccessTransformerSer
 			options.getAccessTransformers().from(atFiles);
 			options.getClasspath().from(classpath);
 			options.getToolServiceOptions().set(ForgeToolService.createOptions(project));
+
+			LoomGradleExtension extension = LoomGradleExtension.get(project);
+
+			if (extension.isLegacyForge()) {
+				options.getMappingsServiceOptions().set(extension.getMappingConfiguration().getMappingsServiceOptions(project, MappingOption.WITH_SRG));
+			}
 		});
 	}
 
@@ -134,13 +156,45 @@ public final class AccessTransformerService extends Service<AccessTransformerSer
 	}
 
 	public void execute(Path input, Path output) throws IOException {
+		try (TempFiles tempFiles = new TempFiles()) {
+			execute(input, output, tempFiles);
+		}
+	}
+
+	public void execute(Path input, Path output, TempFiles tempFiles) throws IOException {
 		final List<String> args = new ArrayList<>();
 		args.add("--inJar");
 		args.add(input.toAbsolutePath().toString());
 		args.add("--outJar");
 		args.add(output.toAbsolutePath().toString());
 
-		for (File atFile : getOptions().getAccessTransformers().getFiles()) {
+		Collection<File> atFiles = getOptions().getAccessTransformers().getFiles();
+
+		if (getOptions().getMappingsServiceOptions().isPresent()) {
+			TinyMappingsService mappingsService = getServiceFactory().get(getOptions().getMappingsServiceOptions());
+			MappingTree mappingTree = mappingsService.getMappingTree();
+			MappingSet mappingSet = new TinyMappingsReader(mappingTree, "srg", "official").read();
+
+			Collection<File> mappedAtFiles = new ArrayList<>();
+
+			for (File atFile : atFiles) {
+				AccessTransformSet accessTransformSet = AccessTransformSet.create();
+
+				try (Reader reader = new FileReader(atFile)) {
+					AccessTransformFormats.FML.read(reader, accessTransformSet);
+				}
+
+				accessTransformSet = AccessTransformSetMapper.remap(accessTransformSet, mappingSet);
+
+				Path mappedAtFile = tempFiles.file("at-conf", ".cfg");
+				AccessTransformFormats.FML.write(mappedAtFile, accessTransformSet);
+				mappedAtFiles.add(mappedAtFile.toFile());
+			}
+
+			atFiles = mappedAtFiles;
+		}
+
+		for (File atFile : atFiles) {
 			args.add("--atFile");
 			args.add(atFile.getAbsolutePath());
 		}

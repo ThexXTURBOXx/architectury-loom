@@ -119,6 +119,7 @@ public final class SourceRemapperService extends Service<SourceRemapperService.O
 				LOGGER.warn("Could not remap " + source + " fully!", e);
 			}
 
+			SourceRemapper.fixupLineNumbers(srcPath, dstPath);
 			SourceRemapper.copyNonJavaFiles(srcPath, dstPath, LOGGER, source);
 		} finally {
 			if (isSrcTmp) {

@@ -26,13 +26,17 @@ package net.fabricmc.loom.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.mercury.Mercury;
@@ -151,6 +155,7 @@ public class SourceRemapper {
 			project.getLogger().warn("Could not remap " + source.getName() + " fully!", e);
 		}
 
+		fixupLineNumbers(srcPath, dstPath);
 		copyNonJavaFiles(srcPath, dstPath, project.getLogger(), source.toPath());
 
 		if (dstFs != null) {
@@ -268,5 +273,42 @@ public class SourceRemapper {
 		String name = path.getFileName().toString();
 		// ".java" is not a valid java file
 		return name.endsWith(".java") && name.length() != 5;
+	}
+
+	/**
+	 * Mercury re-organizes imports during remapping, which can result in mismatching line information when debugging.
+	 * This method works around the issue by forcefully re-aligning the output files with the input files by inserting
+	 * empty lines or joining multiple lines into one.
+	 */
+	public static void fixupLineNumbers(Path srcRoot, Path outRoot) throws IOException {
+		Files.walkFileTree(outRoot, new SimpleFileVisitor<>() {
+			@Override
+			public FileVisitResult visitFile(Path outPath, BasicFileAttributes attrs) throws IOException {
+				Path srcPath = srcRoot.resolve(outRoot.relativize(outPath).toString());
+				List<String> src = Files.readAllLines(srcPath);
+				List<String> out = Files.readAllLines(outPath);
+				int lastSrc = IntStream.range(0, src.size()).filter(i -> src.get(i).startsWith("import")).max().orElse(0);
+				int lastOut = IntStream.range(0, out.size()).filter(i -> out.get(i).startsWith("import")).max().orElse(0);
+
+				if (lastSrc == lastOut) {
+					return FileVisitResult.CONTINUE;
+				}
+
+				while (lastOut < lastSrc) {
+					out.add(lastOut + 1, "");
+					lastOut++;
+				}
+
+				while (lastSrc < lastOut && lastOut > 0) {
+					out.set(lastOut - 1, out.get(lastOut - 1) + out.get(lastOut));
+					out.remove(lastOut);
+					lastOut--;
+				}
+
+				Files.write(outPath, out);
+
+				return FileVisitResult.CONTINUE;
+			}
+		});
 	}
 }
