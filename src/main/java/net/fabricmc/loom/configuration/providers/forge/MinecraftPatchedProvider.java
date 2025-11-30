@@ -656,8 +656,8 @@ public class MinecraftPatchedProvider {
 	}
 
 	public enum Type {
-		CLIENT_ONLY("client", "client", (patch, userdev) -> patch.clientPatches),
-		SERVER_ONLY("server", "server", (patch, userdev) -> patch.serverPatches),
+		CLIENT_ONLY("client", "client", (patch, userdev) -> patch.extractClientPatches()),
+		SERVER_ONLY("server", "server", (patch, userdev) -> patch.extractServerPatches()),
 		MERGED("merged", "joined", (patch, userdev) -> userdev.joinedPatches);
 
 		public final String id;

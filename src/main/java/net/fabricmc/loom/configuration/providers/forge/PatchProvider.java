@@ -49,6 +49,7 @@ import lzma.streams.LzmaInputStream;
 import lzma.streams.LzmaOutputStream;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
+import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.configuration.DependencyInfo;
 import net.fabricmc.loom.configuration.providers.forge.fg2.Pack200Provider;
@@ -56,8 +57,10 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.FileSystemUtil;
 
 public class PatchProvider extends DependencyProvider {
-	public Path clientPatches;
-	public Path serverPatches;
+	private Path projectCacheFolder;
+	private Path installerJar;
+	private @Nullable Path clientPatches;
+	private @Nullable Path serverPatches;
 
 	public PatchProvider(Project project) {
 		super(project);
@@ -66,29 +69,50 @@ public class PatchProvider extends DependencyProvider {
 	@Override
 	public void provide(DependencyInfo dependency) throws Exception {
 		init();
+		installerJar = getExtension().isModernForgeLike()
+				? dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge installer")).toPath()
+				: getExtension().getForgeUniversalProvider().getForge().toPath();
 
-		if (Files.notExists(clientPatches) || Files.notExists(serverPatches) || refreshDeps()) {
-			getProject().getLogger().info(":extracting forge patches");
+		if (getExtension().isLegacyForge()) {
+			clientPatches = projectCacheFolder.resolve("patches-client.lzma");
+			serverPatches = projectCacheFolder.resolve("patches-server.lzma");
+			extractLegacyPatches(clientPatches, serverPatches);
+		}
+	}
 
-			Path installerJar = getExtension().isModernForgeLike()
-					? dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge installer")).toPath()
-					: getExtension().getForgeUniversalProvider().getForge().toPath();
+	public Path extractClientPatches() {
+		if (clientPatches == null) {
+			clientPatches = projectCacheFolder.resolve("patches-client.lzma");
+			extractPatches(clientPatches, "client.lzma");
+		}
 
-			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(installerJar, false)) {
-				if (getExtension().isModernForgeLike()) {
-					Files.copy(fs.getPath("data", "client.lzma"), clientPatches, StandardCopyOption.REPLACE_EXISTING);
-					Files.copy(fs.getPath("data", "server.lzma"), serverPatches, StandardCopyOption.REPLACE_EXISTING);
-				} else {
-					splitAndConvertLegacyPatches(fs.getPath("binpatches.pack.lzma"));
-				}
-			}
+		return clientPatches;
+	}
+
+	public Path extractServerPatches() {
+		if (serverPatches == null) {
+			serverPatches = projectCacheFolder.resolve("patches-server.lzma");
+			extractPatches(serverPatches, "server.lzma");
+		}
+
+		return serverPatches;
+	}
+
+	private void extractPatches(Path targetPath, String name) {
+		if (Files.exists(targetPath) && !refreshDeps()) {
+			// No need to extract
+			return;
+		}
+
+		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(installerJar, false)) {
+			Files.copy(fs.getPath("data", name), targetPath, StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
 		}
 	}
 
 	private void init() {
-		final Path projectCacheFolder = ForgeProvider.getForgeCache(getProject());
-		clientPatches = projectCacheFolder.resolve("patches-client.lzma");
-		serverPatches = projectCacheFolder.resolve("patches-server.lzma");
+		this.projectCacheFolder = ForgeProvider.getForgeCache(getProject());
 
 		try {
 			Files.createDirectories(projectCacheFolder);
@@ -97,8 +121,19 @@ public class PatchProvider extends DependencyProvider {
 		}
 	}
 
-	private void splitAndConvertLegacyPatches(Path joinedLegacyPatches) throws IOException {
-		try (JarInputStream in = new JarInputStream(new ByteArrayInputStream(unpack200Lzma(joinedLegacyPatches)));
+	private void extractLegacyPatches(Path clientPatches, Path serverPatches) throws IOException {
+		if (Files.exists(clientPatches) && Files.exists(serverPatches) && !refreshDeps()) {
+			// No need to extract
+			return;
+		}
+
+		byte[] unpackedBytes;
+
+		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(installerJar, false)) {
+			unpackedBytes = unpack200Lzma(fs.getPath("binpatches.pack.lzma"));
+		}
+
+		try (JarInputStream in = new JarInputStream(new ByteArrayInputStream(unpackedBytes));
 				OutputStream clientFileOut = Files.newOutputStream(clientPatches, CREATE, TRUNCATE_EXISTING);
 				LzmaOutputStream clientLzmaOut = new LzmaOutputStream(clientFileOut, new Encoder());
 				JarOutputStream clientJarOut = new JarOutputStream(clientLzmaOut);

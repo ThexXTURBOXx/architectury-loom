@@ -250,8 +250,8 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 
 		MinecraftProvider minecraftProvider = getExtension().getMinecraftProvider();
 		PatchProvider patchProvider = getExtension().getPatchProvider();
-		patchJars(minecraftProvider.getMinecraftServerJar().toPath(), minecraftServerPatchedJar, patchProvider.serverPatches);
-		patchJars(minecraftProvider.getMinecraftClientJar().toPath(), minecraftClientPatchedJar, patchProvider.clientPatches);
+		patchJars(minecraftProvider.getMinecraftServerJar().toPath(), minecraftServerPatchedJar, patchProvider.extractServerPatches());
+		patchJars(minecraftProvider.getMinecraftClientJar().toPath(), minecraftClientPatchedJar, patchProvider.extractClientPatches());
 
 		logger.lifecycle(":patched jars in " + stopwatch.stop());
 	}
