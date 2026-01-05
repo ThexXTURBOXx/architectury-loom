@@ -285,6 +285,17 @@ public class SourceRemapper {
 			@Override
 			public FileVisitResult visitFile(Path outPath, BasicFileAttributes attrs) throws IOException {
 				Path srcPath = srcRoot.resolve(outRoot.relativize(outPath).toString());
+
+				if (Files.notExists(srcPath)) {
+					// Mercury places output class files depending on their class name and package, not depending on the
+					// input file path. As such, when e.g. the file is entirely commented (as sometimes the case with
+					// multi-version mods), or e.g. all sources are organized in jvmMain/commonMain subfolders (as the
+					// case with the Kotlin standard library sources), Mercury will place the output file at a different
+					// path than the input file, which makes it impossible for us to easily find the correct input file,
+					// so we'll just skip such files for now.
+					return FileVisitResult.CONTINUE;
+				}
+
 				List<String> src = Files.readAllLines(srcPath);
 				List<String> out = Files.readAllLines(outPath);
 				int lastSrc = IntStream.range(0, src.size()).filter(i -> src.get(i).startsWith("import")).max().orElse(0);
