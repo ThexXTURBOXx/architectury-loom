@@ -78,6 +78,7 @@ import net.fabricmc.loom.configuration.ifaceinject.InterfaceInjectionProcessor;
 import net.fabricmc.loom.configuration.mods.ModConfigurationRemapper;
 import net.fabricmc.loom.configuration.processors.MinecraftJarProcessorManager;
 import net.fabricmc.loom.configuration.processors.ModJavadocProcessor;
+import net.fabricmc.loom.configuration.providers.mappings.GeneratedIntermediateMappingsProvider;
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingsFactory;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMetadataProvider;
@@ -238,6 +239,12 @@ public abstract class CompileConfiguration implements Runnable {
 			// but before MinecraftPatchedProvider.provide.
 			setupDependencyProviders(project, extension);
 
+			if (extension.isLegacyForge()) {
+				extension.setIntermediateMappingsProvider(GeneratedIntermediateMappingsProvider.class, provider -> {
+					provider.minecraftProvider = minecraftProvider;
+				});
+			}
+
 			// Resolve the mapping files from the configuration
 			final DependencyInfo mappingsDep = DependencyInfo.create(getProject(), Configurations.MAPPINGS);
 			final MappingConfiguration mappingConfiguration = MappingConfiguration.create(getProject(), configContext.serviceFactory(), mappingsDep, minecraftProvider);
@@ -245,7 +252,7 @@ public abstract class CompileConfiguration implements Runnable {
 
 			if (extension.isForgeLike()) {
 				ForgeLibrariesProvider.provide(mappingConfiguration, project);
-				((ForgeMinecraftProvider) minecraftProvider).getPatchedProvider().provide();
+				((ForgeMinecraftProvider) minecraftProvider).getPatchedProvider().provide(configContext.serviceFactory());
 			}
 
 			mappingConfiguration.setupPost(project);
@@ -577,9 +584,9 @@ public abstract class CompileConfiguration implements Runnable {
 		}
 
 		if (extension.isForgeLike()) {
+			dependencyProviders.addProvider(new ForgeUniversalProvider(project));
 			dependencyProviders.addProvider(new McpConfigProvider(project));
 			dependencyProviders.addProvider(new PatchProvider(project));
-			dependencyProviders.addProvider(new ForgeUniversalProvider(project));
 		}
 
 		dependencyProviders.handleDependencies(project);

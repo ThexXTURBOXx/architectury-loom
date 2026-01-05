@@ -171,8 +171,12 @@ public class ForgeLibrariesProvider {
 			DependencyProvider.addDependency(project, dep, Constants.Configurations.FORGE_DEPENDENCIES);
 		}
 
-		LoomVersions unprotect = isFancyModLoader10OrNewer ? LoomVersions.UNPROTECT_FANCYMODLOADER10 : LoomVersions.UNPROTECT_MODLAUNCHER;
-		DependencyProvider.addDependency(project, unprotect.mavenNotation(), Constants.Configurations.FORGE_EXTRA);
+		// Excluded on legacy forge because it pulls in a log4j-api version newer than what forge wants and we don't
+		// need it anyway
+		if (extension.isModernForgeLike()) {
+			LoomVersions unprotect = isFancyModLoader10OrNewer ? LoomVersions.UNPROTECT_FANCYMODLOADER10 : LoomVersions.UNPROTECT_MODLAUNCHER;
+			DependencyProvider.addDependency(project, unprotect.mavenNotation(), Constants.Configurations.FORGE_EXTRA);
+		}
 	}
 
 	// Returns a Gradle dependency notation.
