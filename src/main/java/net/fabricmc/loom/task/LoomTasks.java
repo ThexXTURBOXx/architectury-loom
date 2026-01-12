@@ -25,6 +25,7 @@
 package net.fabricmc.loom.task;
 
 import java.io.File;
+import java.util.Objects;
 
 import javax.inject.Inject;
 
@@ -60,6 +61,8 @@ public abstract class LoomTasks implements Runnable {
 
 	@Override
 	public void run() {
+		LoomGradleExtension extension = LoomGradleExtension.get(getProject());
+
 		SourceSetHelper.getSourceSets(getProject()).all(sourceSet -> {
 			if (SourceSetHelper.isMainSourceSet(sourceSet)) {
 				getTasks().register("migrateMappings", MigrateMappingsTask.class, t -> {
@@ -87,9 +90,17 @@ public abstract class LoomTasks implements Runnable {
 		var generateLog4jConfig = getTasks().register("generateLog4jConfig", GenerateLog4jConfigTask.class, t -> {
 			t.setDescription("Generate the log4j config file");
 		});
-		var generateRemapClasspath = getTasks().register("generateRemapClasspath", GenerateRemapClasspathTask.class, t -> {
-			t.setDescription("Generate the remap classpath file");
-		});
+
+		TaskProvider<GenerateRemapClasspathTask> generateRemapClasspath;
+
+		if (!extension.disableObfuscation()) {
+			generateRemapClasspath = getTasks().register("generateRemapClasspath", GenerateRemapClasspathTask.class, t -> {
+				t.setDescription("Generate the remap classpath file");
+			});
+		} else {
+			generateRemapClasspath = null;
+		}
+
 		getTasks().register("generateDLIConfig", GenerateDLIConfigTask.class, t -> {
 			t.setDescription("Generate the DevLaunchInjector config file");
 
@@ -97,13 +108,19 @@ public abstract class LoomTasks implements Runnable {
 			t.mustRunAfter("eclipse");
 
 			t.dependsOn(generateLog4jConfig);
-			t.getRemapClasspathFile().set(generateRemapClasspath.get().getRemapClasspathFile());
+
+			if (!extension.disableObfuscation()) {
+				t.getRemapClasspathFile().set(Objects.requireNonNull(generateRemapClasspath).get().getRemapClasspathFile());
+			}
 		});
 
 		getTasks().register("configureLaunch", task -> {
 			task.dependsOn(getTasks().named("generateDLIConfig"));
 			task.dependsOn(getTasks().named("generateLog4jConfig"));
-			task.dependsOn(getTasks().named("generateRemapClasspath"));
+
+			if (!extension.disableObfuscation()) {
+				task.dependsOn(getTasks().named("generateRemapClasspath"));
+			}
 
 			task.setDescription("Setup the required files to launch Minecraft");
 			task.setGroup(Constants.TaskGroup.FABRIC);
@@ -121,8 +138,6 @@ public abstract class LoomTasks implements Runnable {
 
 		// Must be done in afterEvaluate to allow time for the build script to configure the jar config.
 		GradleUtils.afterSuccessfulEvaluation(getProject(), () -> {
-			LoomGradleExtension extension = LoomGradleExtension.get(getProject());
-
 			if (extension.getMinecraftJarConfiguration().get() == MinecraftJarConfiguration.SERVER_ONLY) {
 				// Server only, nothing more to do.
 				return;
