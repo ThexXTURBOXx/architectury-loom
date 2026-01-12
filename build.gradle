@@ -280,7 +280,7 @@ gradlePlugin {
 			implementationClass = 'net.fabricmc.loom.LoomGradlePlugin'
 		}
 		fabricLoomCompanion {
-			id = 'dev.architectury.loom-companion'
+			id = 'gg.essential.loom-companion'
 			implementationClass = 'net.fabricmc.loom.LoomCompanionGradlePlugin'
 		}
 	}
