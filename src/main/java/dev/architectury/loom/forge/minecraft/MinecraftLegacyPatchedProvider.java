@@ -212,8 +212,8 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 		}
 
 		// Older versions of Forge rely on utility classes from log4j-core 2.0-beta9 but we'll upgrade the runtime to a
-		// release version (so we can use the TerminalConsoleAppender) where some of those classes have been moved from
-		// a `helpers` to a `utils` package.
+		// release version (so we can use the LoggerNamePatternSelector from fabric-log4j-util) where some of those
+		// classes have been moved from a `helpers` to a `utils` package.
 		// To allow Forge to work regardless, we'll re-package those helper classes into the forge jar.
 		Path log4jBeta9 = project.getConfigurations().getByName(Constants.Configurations.MINECRAFT_COMPILE_LIBRARIES)
 				.getFiles()
