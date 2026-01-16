@@ -35,6 +35,7 @@ import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.DependencySet;
 
 import net.fabricmc.loom.configuration.DependencyInfo;
+import net.fabricmc.loom.util.Constants;
 
 public class DependencyProviders {
 	private static class ProviderList {
@@ -78,8 +79,15 @@ public class DependencyProviders {
 		Map<String, ProviderList> providerListMap = new HashMap<>();
 		List<ProviderList> targetProviders = new ArrayList<>();
 
+		project.getConfigurations().getByName(Constants.Configurations.FORGE_USERDEV).resolutionStrategy(rs ->
+				rs.dependencySubstitution(ds -> ds.substitute(ds.module("net.minecraftforge:forge"))
+						.withClassifier("userdev")));
+
 		for (DependencyProvider provider : dependencyProviderList) {
-			providerListMap.computeIfAbsent(provider.getTargetConfig(), (k) -> {
+			String targetConfig = provider.getTargetConfig().equals(Constants.Configurations.FORGE)
+						&& !project.getConfigurations().getByName(Constants.Configurations.FORGE_LEGACY).getDependencies().isEmpty()
+					? Constants.Configurations.FORGE_LEGACY : provider.getTargetConfig();
+			providerListMap.computeIfAbsent(targetConfig, (k) -> {
 				ProviderList list = new ProviderList(k);
 				targetProviders.add(list);
 				return list;
@@ -104,6 +112,10 @@ public class DependencyProviders {
 			for (Dependency dependency : dependencies) {
 				for (DependencyProvider provider : list.providers) {
 					DependencyInfo info = DependencyInfo.create(project, dependency, configuration);
+
+					if (!info.getSourceConfiguration().isCanBeResolved()) {
+						info.setResolvedVersion(dependency.getVersion());
+					}
 
 					try {
 						provider.provide(info);

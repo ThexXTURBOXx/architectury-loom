@@ -82,6 +82,14 @@ public class ForgeLibrariesProvider {
 	private static final String NEOFORGE_GAME_LOCATOR_FILE = "net/neoforged/fml/loading/moddiscovery/locators/GameLocator.class";
 	private static final String NEOFORGE_REQUIRED_SYSTEM_FILES_FILE = "net/neoforged/fml/loading/moddiscovery/locators/RequiredSystemFiles.class";
 
+	private static final Map<String, String> LEGACY_LIB_RELOCATIONS = Map.of(
+			"org.scala-lang:scala-parser-combinators_2.11", "org.scala-lang.modules:scala-parser-combinators_2.11",
+			"org.scala-lang:scala-swing_2.11", "org.scala-lang.modules:scala-swing_2.11",
+			"org.scala-lang:scala-xml_2.11", "org.scala-lang.modules:scala-xml_2.11",
+			"tv.twitch:twitch-external-platform", "",
+			"tv.twitch:twitch-platform", ""
+	);
+
 	public static void provide(MappingConfiguration mappingConfiguration, Project project) throws Exception {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		final List<Dependency> dependencies = new ArrayList<>();
@@ -115,6 +123,23 @@ public class ForgeLibrariesProvider {
 					String version = lib.substring(lib.lastIndexOf(":"));
 					dependencies.add(project.getDependencies().create("net.minecraftforge:bootstrap-dev" + version));
 				}
+			}
+
+			var reloc = LEGACY_LIB_RELOCATIONS.entrySet().stream().filter(e -> lib.startsWith(e.getKey())).findFirst();
+
+			if (reloc.isPresent()) {
+				if (reloc.get().getValue().isEmpty()) continue; // This means we can exclude the library
+
+				String version = lib.substring(lib.lastIndexOf(":"));
+				// Used for the file extension, for example @jar
+				int atIndex = version.indexOf('@');
+
+				if (atIndex >= 0) {
+					// Strip the file extension away
+					version = version.substring(0, atIndex);
+				}
+
+				dep = reloc.get().getValue() + version;
 			}
 
 			if (dep == null) {

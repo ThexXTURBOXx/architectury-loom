@@ -1,9 +1,8 @@
 package dev.architectury.loom.accesstransformer;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
+import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -187,8 +186,11 @@ public final class AccessTransformerService extends Service<AccessTransformerSer
 			for (File atFile : atFiles) {
 				AccessTransformSet accessTransformSet = AccessTransformSet.create();
 
-				try (Reader reader = new FileReader(atFile)) {
-					AccessTransformFormats.FML.read(reader, accessTransformSet);
+				String ats = Files.readString(atFile.toPath());
+				ats = ats.replaceAll("(<init>\\(.+?\\))([^V])", "$1V$2"); // Fix Forge 1.7.10 transformers
+
+				try (StringReader sr = new StringReader(ats)) {
+					AccessTransformFormats.FML.read(sr, accessTransformSet);
 				}
 
 				accessTransformSet = AccessTransformSetMapper.remap(accessTransformSet, mappingSet);
